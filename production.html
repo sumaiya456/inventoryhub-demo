@@ -758,7 +758,7 @@ Prefer: return=representation</pre>
 
             const searchTerm = document.getElementById('searchInput').value.trim();
             if (searchTerm) {
-                query = query.or(`board_name.ilike.%${searchTerm}%,display_name.ilike.%${searchTerm}%,address.ilike.%${searchTerm}%`);
+                query = query.or(`board_name.ilike.%${searchTerm}%,display_name.ilike.%${searchTerm}%,address.ilike.%${searchTerm}%,reference_id.ilike.%${searchTerm}%,inventory_uuid.ilike.%${searchTerm}%`);
             }
 
             const country = document.getElementById('countryFilter').value;
