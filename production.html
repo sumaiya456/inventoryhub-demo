@@ -341,6 +341,45 @@
             font-weight: 600;
             color: #10b981;
         }
+        .api-info {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            margin-top: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            display: none;
+        }
+        .api-info h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+        .api-endpoint {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            border-left: 4px solid #667eea;
+        }
+        .api-endpoint code {
+            background: #1e293b;
+            color: #10b981;
+            padding: 8px 12px;
+            border-radius: 4px;
+            display: block;
+            margin: 8px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            overflow-x: auto;
+        }
+        .api-endpoint pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 12px;
+            border-radius: 4px;
+            margin: 8px 0;
+            overflow-x: auto;
+            font-size: 12px;
+        }
         input[type="file"] {
             display: none;
         }
@@ -373,6 +412,63 @@
             </form>
             <div class="demo-note">
                 <strong>Demo Mode:</strong> Enter any email/password to login
+            </div>
+
+            <div class="api-info" id="apiInfo">
+                <h3>API Documentation for LMX/MAX Integration</h3>
+                <p>Use these REST API endpoints to integrate inventory with other Moving Walls products:</p>
+                
+                <div class="api-endpoint">
+                    <h4>Get All Inventory</h4>
+                    <code>GET https://slokdinbenkwkqfoduwq.supabase.co/rest/v1/inventory_production</code>
+                    <p><strong>Headers:</strong></p>
+                    <pre>apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...</pre>
+                    <p><strong>Response:</strong> JSON array of all inventory items</p>
+                </div>
+
+                <div class="api-endpoint">
+                    <h4>Get Inventory by Country</h4>
+                    <code>GET https://slokdinbenkwkqfoduwq.supabase.co/rest/v1/inventory_production?country=eq.Malaysia</code>
+                    <p><strong>Use cases:</strong> Filter by country, state, or any field using Supabase query syntax</p>
+                </div>
+
+                <div class="api-endpoint">
+                    <h4>Get Active & Available Inventory Only</h4>
+                    <code>GET https://slokdinbenkwkqfoduwq.supabase.co/rest/v1/inventory_production?active=eq.true&available=eq.true</code>
+                    <p><strong>Use case:</strong> Show only bookable inventory in LMX/MAX</p>
+                </div>
+
+                <div class="api-endpoint">
+                    <h4>Push Inventory via API</h4>
+                    <code>POST https://slokdinbenkwkqfoduwq.supabase.co/rest/v1/inventory_production</code>
+                    <p><strong>Headers:</strong></p>
+                    <pre>Content-Type: application/json
+apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+Prefer: return=representation</pre>
+                    <p><strong>Body Example:</strong></p>
+                    <pre>{
+  "inventory_uuid": "INV-12345",
+  "board_name": "Times Square Billboard",
+  "country": "USA",
+  "state": "New York",
+  "billboard_type": "Digital",
+  "selling_standard_rate": 50000,
+  "selling_monthly_rate": 150000,
+  "active": true,
+  "available": true
+}</pre>
+                </div>
+
+                <div class="api-endpoint">
+                    <h4>Update Inventory Status</h4>
+                    <code>PATCH https://slokdinbenkwkqfoduwq.supabase.co/rest/v1/inventory_production?inventory_uuid=eq.INV-12345</code>
+                    <p><strong>Body:</strong></p>
+                    <pre>{"active": false, "available": false}</pre>
+                </div>
+
+                <button class="btn-secondary" onclick="hideAPIInfo()">Close</button>
             </div>
         </div>
     </div>
@@ -448,6 +544,8 @@
                     <button class="btn-warning" onclick="openAddModal()">Add New Site</button>
                     <input type="file" id="csvFile" accept=".csv,.xlsx" onchange="handleFileUpload(event)">
                     <button class="btn-success" onclick="document.getElementById('csvFile').click()">Upload CSV</button>
+                    <button class="btn-secondary" onclick="downloadCSVTemplate()">Download Template</button>
+                    <button class="btn-secondary" onclick="showAPIInfo()">API Documentation</button>
                 </div>
             </div>
 
@@ -533,6 +631,20 @@
                     <label>Number of Screens</label>
                     <input type="number" id="noOfScreens">
                 </div>
+                <div class="form-group">
+                    <label>Active Status</label>
+                    <select id="activeStatus">
+                        <option value="true">Active</option>
+                        <option value="false">Inactive</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Availability</label>
+                    <select id="availableStatus">
+                        <option value="true">Available</option>
+                        <option value="false">Not Available</option>
+                    </select>
+                </div>
                 <button type="submit" class="login-btn" id="submitBtn">Add Site</button>
             </form>
         </div>
@@ -577,12 +689,12 @@
             totalCount = count;
             document.getElementById('totalRecords').textContent = count.toLocaleString();
 
-            const { data: actives } = await supabase
+            const { count: activeCount } = await supabase
                 .from('inventory_production')
-                .select('inventory_uuid', { count: 'exact', head: true })
+                .select('*', { count: 'exact', head: true })
                 .eq('active', true);
             
-            document.getElementById('activeSites').textContent = actives?.length || 0;
+            document.getElementById('activeSites').textContent = activeCount?.toLocaleString() || 0;
 
             const { data: countries } = await supabase
                 .from('inventory_production')
@@ -768,7 +880,10 @@
             document.getElementById('modalTitle').textContent = 'Add New Site';
             document.getElementById('submitBtn').textContent = 'Add Site';
             document.getElementById('addModal').style.display = 'flex';
-            document.querySelector('form').reset();
+            const form = document.querySelector('form');
+            form.reset();
+            document.getElementById('activeStatus').value = 'true';
+            document.getElementById('availableStatus').value = 'true';
         }
 
         function closeModal() {
@@ -791,8 +906,8 @@
                 selling_standard_rate: parseFloat(document.getElementById('standardRate').value) || null,
                 selling_monthly_rate: parseFloat(document.getElementById('monthlyRate').value) || null,
                 no_of_screens: parseInt(document.getElementById('noOfScreens').value) || null,
-                active: true,
-                available: true
+                active: document.getElementById('activeStatus').value === 'true',
+                available: document.getElementById('availableStatus').value === 'true'
             };
 
             const { error } = await supabase
@@ -827,8 +942,8 @@
                     alert('Error updating status: ' + error.message);
                 } else if (data && data.length > 0) {
                     alert(`Successfully changed to ${statusText}!`);
-                    loadInventory();
-                    loadStats();
+                    await loadStats();
+                    await loadInventory();
                 } else {
                     alert('No rows updated. Item may not exist.');
                 }
@@ -854,7 +969,100 @@
         }
 
         function handleFileUpload(event) {
-            alert('CSV upload feature - integrate with your existing import tool or implement file parsing here');
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                const text = e.target.result;
+                const lines = text.split('\n');
+                const headers = lines[0].split(',').map(h => h.trim());
+                
+                const items = [];
+                for (let i = 1; i < lines.length; i++) {
+                    if (!lines[i].trim()) continue;
+                    
+                    const values = lines[i].split(',').map(v => v.trim());
+                    const item = {
+                        inventory_uuid: values[0] || 'INV-' + Date.now() + '-' + i,
+                        board_name: values[1] || '',
+                        display_name: values[2] || values[1] || '',
+                        reference_id: values[3] || '',
+                        country: values[4] || '',
+                        state: values[5] || '',
+                        district: values[6] || '',
+                        address: values[7] || '',
+                        latitude: values[8] ? parseFloat(values[8]) : null,
+                        longitude: values[9] ? parseFloat(values[9]) : null,
+                        gps_coordinates: values[10] || '',
+                        media_owner: values[11] || '',
+                        active: values[12] === 'true' || values[12] === '1' || values[12] === 'TRUE',
+                        available: values[13] === 'true' || values[13] === '1' || values[13] === 'TRUE',
+                        billboard_type: values[14] || '',
+                        board_format: values[15] || '',
+                        images: values[16] || '',
+                        selling_standard_rate: values[17] ? parseFloat(values[17]) : null,
+                        selling_monthly_rate: values[18] ? parseFloat(values[18]) : null,
+                        no_of_screens: values[19] ? parseInt(values[19]) : null,
+                        resolution: values[20] || '',
+                        programmatic_enabled: values[21] || 'No',
+                        exposure_to_dsp: values[22] || 'No'
+                    };
+                    items.push(item);
+                }
+
+                if (items.length === 0) {
+                    alert('No valid data found in CSV');
+                    return;
+                }
+
+                if (!confirm(`Upload ${items.length} items from CSV?`)) return;
+
+                // Upload in batches of 100
+                const batchSize = 100;
+                let uploaded = 0;
+
+                for (let i = 0; i < items.length; i += batchSize) {
+                    const batch = items.slice(i, i + batchSize);
+                    const { error } = await supabase
+                        .from('inventory_production')
+                        .insert(batch);
+
+                    if (error) {
+                        alert(`Error uploading batch: ${error.message}`);
+                        break;
+                    }
+                    uploaded += batch.length;
+                }
+
+                alert(`Successfully uploaded ${uploaded} items!`);
+                document.getElementById('csvFile').value = '';
+                loadStats();
+                loadInventory();
+            };
+            reader.readAsText(file);
+        }
+
+        function downloadCSVTemplate() {
+            const template = `inventory_uuid,board_name,display_name,reference_id,country,state,district,address,latitude,longitude,gps_coordinates,media_owner,active,available,billboard_type,board_format,images,selling_standard_rate,selling_monthly_rate,no_of_screens,resolution,programmatic_enabled,exposure_to_dsp
+INV-SAMPLE-001,Downtown Billboard,Main Street Digital,REF-001,USA,California,Los Angeles,123 Main St,34.0522,-118.2437,"34.0522,-118.2437",ABC Media,true,true,Digital,Landscape,https://example.com/img.jpg,5000,15000,1,1920x1080,Yes,Yes`;
+
+            const blob = new Blob([template], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'inventory_template.csv';
+            a.click();
+            window.URL.revokeObjectURL(url);
+        }
+
+        function showAPIInfo() {
+            document.getElementById('apiInfo').style.display = 'block';
+            document.getElementById('apiInfo').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function hideAPIInfo() {
+            document.getElementById('apiInfo').style.display = 'none';
         }
     </script>
 </body>
