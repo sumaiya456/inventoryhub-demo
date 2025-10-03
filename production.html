@@ -1,1071 +1,650 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>InventoryHub - Production System</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: #f5f5f5;
-        }
-        .login-container {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        }
-        .login-box {
-            background: white;
-            padding: 40px;
-            border-radius: 12px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-            width: 100%;
-            max-width: 400px;
-        }
-        .login-box h1 {
-            color: #1f2937;
-            margin-bottom: 8px;
-            font-size: 28px;
-        }
-        .login-box p {
-            color: #6b7280;
-            margin-bottom: 30px;
-            font-size: 14px;
-        }
-        .form-group {
-            margin-bottom: 20px;
-        }
-        .form-group label {
-            display: block;
-            margin-bottom: 8px;
-            color: #374151;
-            font-weight: 500;
-            font-size: 14px;
-        }
-        .form-group input, .form-group select {
-            width: 100%;
-            padding: 12px;
-            border: 2px solid #e5e7eb;
-            border-radius: 8px;
-            font-size: 14px;
-            transition: border-color 0.2s;
-        }
-        .form-group input:focus, .form-group select:focus {
-            outline: none;
-            border-color: #667eea;
-        }
-        .login-btn {
-            width: 100%;
-            padding: 14px;
-            background: #667eea;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-        .login-btn:hover {
-            background: #5568d3;
-        }
-        .demo-note {
-            margin-top: 20px;
-            padding: 12px;
-            background: #fef3c7;
-            border-radius: 6px;
-            font-size: 13px;
-            color: #92400e;
-        }
-        .hidden {
-            display: none;
-        }
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 30px;
-            border-radius: 12px;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .header h1 {
-            font-size: 28px;
-            margin-bottom: 5px;
-        }
-        .header p {
-            opacity: 0.9;
-            font-size: 14px;
-        }
-        .logout-btn {
-            padding: 10px 20px;
-            background: rgba(255,255,255,0.2);
-            color: white;
-            border: 1px solid white;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 14px;
-        }
-        .stats {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin-bottom: 20px;
-        }
-        .stat-box {
-            background: white;
-            padding: 20px;
-            border-radius: 12px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        }
-        .stat-box div:first-child {
-            font-size: 12px;
-            color: #666;
-            margin-bottom: 8px;
-        }
-        .stat-box strong {
-            font-size: 24px;
-            color: #667eea;
-        }
-        .filters {
-            background: white;
-            padding: 20px;
-            border-radius: 12px;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        }
-        .filter-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin-bottom: 15px;
-        }
-        .filter-group label {
-            font-size: 11px;
-            color: #666;
-            font-weight: 600;
-            text-transform: uppercase;
-            display: block;
-            margin-bottom: 5px;
-        }
-        select, input[type="text"] {
-            width: 100%;
-            padding: 10px;
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
-            font-size: 14px;
-        }
-        select:focus, input[type="text"]:focus {
-            outline: none;
-            border-color: #667eea;
-        }
-        .toggle-group {
-            display: flex;
-            gap: 15px;
-            align-items: center;
-            margin-bottom: 15px;
-        }
-        .toggle {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        .toggle input[type="checkbox"] {
-            width: 18px;
-            height: 18px;
-            cursor: pointer;
-        }
-        .actions {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-        button {
-            padding: 10px 20px;
-            border: none;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-        .btn-primary {
-            background: #667eea;
-            color: white;
-        }
-        .btn-primary:hover {
-            background: #5568d3;
-        }
-        .btn-secondary {
-            background: #f8f9fa;
-            color: #333;
-        }
-        .btn-success {
-            background: #10b981;
-            color: white;
-        }
-        .btn-warning {
-            background: #f59e0b;
-            color: white;
-        }
-        .table-container {
-            background: white;
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        thead {
-            background: #667eea;
-            color: white;
-        }
-        th {
-            padding: 15px;
-            text-align: left;
-            font-weight: 600;
-            font-size: 12px;
-            text-transform: uppercase;
-        }
-        td {
-            padding: 12px 15px;
-            border-bottom: 1px solid #f0f0f0;
-            font-size: 14px;
-        }
-        tbody tr:hover {
-            background: #f8f9ff;
-        }
-        .badge {
-            display: inline-block;
-            padding: 4px 10px;
-            border-radius: 12px;
-            font-size: 11px;
-            font-weight: 600;
-        }
-        .badge-active {
-            background: #d1fae5;
-            color: #065f46;
-        }
-        .badge-inactive {
-            background: #fee2e2;
-            color: #991b1b;
-        }
-        .badge-available {
-            background: #dbeafe;
-            color: #1e40af;
-        }
-        .pagination {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 20px;
-            background: #f8f9fa;
-        }
-        .page-info {
-            font-size: 14px;
-            color: #666;
-        }
-        .page-controls {
-            display: flex;
-            gap: 10px;
-        }
-        .loading {
-            text-align: center;
-            padding: 40px;
-            color: #666;
-        }
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.5);
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-        }
-        .modal-content {
-            background: white;
-            padding: 30px;
-            border-radius: 12px;
-            width: 90%;
-            max-width: 600px;
-            max-height: 90vh;
-            overflow-y: auto;
-        }
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-        .close-btn {
-            background: none;
-            border: none;
-            font-size: 24px;
-            cursor: pointer;
-            color: #6b7280;
-        }
-        .action-btns {
-            display: flex;
-            gap: 5px;
-        }
-        .btn-sm {
-            padding: 6px 12px;
-            font-size: 12px;
-        }
-        .btn-danger {
-            background: #ef4444;
-            color: white;
-        }
-        .price {
-            font-weight: 600;
-            color: #10b981;
-        }
-        .api-info {
-            background: white;
-            padding: 30px;
-            border-radius: 12px;
-            margin-top: 20px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            display: none;
-        }
-        .api-info h3 {
-            color: #667eea;
-            margin-bottom: 15px;
-        }
-        .api-endpoint {
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 8px;
-            margin: 10px 0;
-            border-left: 4px solid #667eea;
-        }
-        .api-endpoint code {
-            background: #1e293b;
-            color: #10b981;
-            padding: 8px 12px;
-            border-radius: 4px;
-            display: block;
-            margin: 8px 0;
-            font-family: 'Courier New', monospace;
-            font-size: 13px;
-            overflow-x: auto;
-        }
-        .api-endpoint pre {
-            background: #1e293b;
-            color: #e2e8f0;
-            padding: 12px;
-            border-radius: 4px;
-            margin: 8px 0;
-            overflow-x: auto;
-            font-size: 12px;
-        }
-        input[type="file"] {
-            display: none;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>InventoryHub - Production System</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    /* ====== Design Tokens ====== */
+    *{margin:0;padding:0;box-sizing:border-box}
+    :root{
+      --primary:#667eea; --primary-700:#5568d3; --accent:#764ba2;
+      --ok:#10b981; --warn:#f59e0b; --danger:#ef4444;
+      --bg:#f6f7fb; --card:#fff; --soft:#f1f5f9; --text:#111827; --muted:#6b7280;
+      --radius:12px;
+    }
+    body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--text)}
+    :focus-visible{outline:2px solid var(--primary);outline-offset:2px;border-radius:8px}
+    .hidden{display:none!important}
+
+    /* ====== Login ====== */
+    .login-container{min-height:100vh;display:flex;align-items:center;justify-content:center;
+      background:linear-gradient(135deg,var(--primary),var(--accent));padding:24px}
+    .login-box{width:100%;max-width:420px;background:var(--card);padding:38px;border-radius:var(--radius);
+      box-shadow:0 18px 40px rgba(0,0,0,.2)}
+    .login-box h1{font-size:28px;margin-bottom:8px}
+    .login-box p{color:var(--muted);margin-bottom:18px}
+    .form-group{margin-bottom:14px}
+    .form-group label{display:block;margin-bottom:6px;font-weight:600;color:#374151}
+    .form-group input,.form-group select{width:100%;padding:12px;border:2px solid #e5e7eb;border-radius:8px}
+    .form-group input:focus,.form-group select:focus{border-color:var(--primary)}
+    .login-btn{width:100%;padding:13px;background:var(--primary);color:#fff;border:none;border-radius:10px;font-weight:800;cursor:pointer}
+    .login-btn:hover{background:var(--primary-700)}
+    .demo-note{margin-top:12px;padding:10px;background:#fff7d6;border-radius:8px;color:#8a5a00;font-size:13px}
+
+    /* ====== App Shell ====== */
+    .app{max-width:1200px;margin:0 auto;padding:18px}
+    .brandbar{background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff;border-radius:14px;
+      padding:18px 20px;margin:18px 0;display:flex;align-items:center;justify-content:space-between;gap:10px}
+    .brandbar h1{font-size:22px;margin-bottom:4px}
+    .brandbar small{opacity:.9}
+    .top-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    .btn{padding:10px 14px;border:none;border-radius:10px;font-weight:800;cursor:pointer}
+    .btn-primary{background:var(--primary);color:#fff}.btn-primary:hover{background:var(--primary-700)}
+    .btn-secondary{background:#eef2ff}.btn-secondary:hover{background:#e0e7ff}
+    .btn-success{background:var(--ok);color:#fff}
+    .btn-warning{background:var(--warn);color:#fff}
+    .btn-danger{background:var(--danger);color:#fff}
+    .btn-sm{padding:6px 10px;font-size:12px}
+    .logout-btn{background:rgba(255,255,255,.18);color:#fff;border:1px solid rgba(255,255,255,.5)}
+
+    /* Tabs */
+    .tabs{display:flex;gap:8px;margin-bottom:12px}
+    .tab{background:#fff;border:1.5px solid #e5e7eb;color:#111827;padding:10px 14px;border-radius:10px;cursor:pointer;font-weight:800}
+    .tab[aria-selected="true"]{border-color:#c7d2fe;background:#eef2ff}
+    .tabpanes{background:var(--card);border-radius:14px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+    .pane{padding:16px}
+
+    /* Toast */
+    .toast{position:fixed;top:18px;right:18px;background:var(--ok);color:#fff;padding:12px 16px;border-radius:10px;
+      box-shadow:0 10px 24px rgba(0,0,0,.18);opacity:0;transform:translateY(-8px);transition:all .25s;z-index:1000}
+    .toast.show{opacity:1;transform:translateY(0)} .toast.error{background:var(--danger)}
+
+    /* KPIs */
+    .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin:8px 0 2px}
+    .stat{background:#fff;border:1px solid #eef2ff;border-radius:12px;padding:16px;position:relative}
+    .stat .dot{position:absolute;right:12px;top:12px;width:8px;height:8px;border-radius:999px;background:var(--primary)}
+    .stat .label{font-size:12px;text-transform:uppercase;color:#6b7280;font-weight:800;letter-spacing:.04em}
+    .stat .value{font-size:26px;font-weight:800;color:#111827;margin-top:6px}
+
+    /* Filters & Actions */
+    .filterbox{background:#fff;border:1px solid #eef2ff;border-radius:12px;padding:16px;margin:12px 0}
+    .filter-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-bottom:10px}
+    .filter-grid label{font-size:11px;text-transform:uppercase;color:#6b7280;font-weight:800;margin-bottom:4px;display:block}
+    .filter-grid input,.filter-grid select{width:100%;padding:10px;border:2px solid #e5e7eb;border-radius:8px}
+    .toggles{display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+    .actions{display:flex;gap:8px;flex-wrap:wrap;margin-left:auto}
+
+    /* Dropzone */
+    .dropzone{border:2px dashed #c7d2fe;background:#eef2ff;border-radius:12px;padding:14px;text-align:center;color:#1e3a8a}
+    .dropzone.drag{background:#e0e7ff;border-color:var(--primary)}
+
+    /* Table */
+    .tablewrap{background:#fff;border:1px solid #eef2ff;border-radius:12px;overflow:hidden}
+    table{width:100%;border-collapse:collapse}
+    thead{background:var(--primary);color:#fff}
+    th{padding:14px;text-align:left;font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+    td{padding:12px 14px;border-bottom:1px solid #f1f5f9}
+    tbody tr:hover{background:#f8f9ff}
+    .price{font-weight:800;color:var(--ok)}
+    .badge{display:inline-block;padding:4px 10px;border-radius:12px;font-size:11px;font-weight:800}
+    .badge-active{background:#d1fae5;color:#065f46}
+    .badge-inactive{background:#fee2e2;color:#991b1b}
+    .badge-available{background:#dbeafe;color:#1e40af}
+
+    /* Pagination */
+    .pagination{display:flex;justify-content:space-between;align-items:center;padding:14px;background:#fafafa}
+    .rows-select{padding:8px 10px;border:2px solid #e5e7eb;border-radius:8px}
+
+    /* Grid Cards + Carousel */
+    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;padding:12px}
+    .card{background:#fff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+    .carousel{position:relative;height:140px;background:#e5e7eb}
+    .carousel img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none}
+    .carousel img.active{display:block}
+    .carousel .dots{position:absolute;bottom:8px;left:0;right:0;display:flex;gap:6px;justify-content:center}
+    .carousel .dot{width:7px;height:7px;border-radius:999px;background:rgba(255,255,255,.8)}
+    .carousel .dot.active{background:#fff}
+    .card-body{padding:12px 14px}
+    .card-title{font-weight:800;margin-bottom:4px}
+    .card-meta{font-size:13px;color:#4b5563}
+    .card-badges{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+    .card-actions{display:flex;gap:6px;margin-top:10px}
+
+    /* Loading skeleton */
+    .loading{padding:28px;text-align:center;color:#6b7280}
+    .skeleton-row{display:grid;grid-template-columns:2fr 2fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr;gap:12px;padding:12px 14px}
+    .sk{height:14px;border-radius:6px;background:linear-gradient(90deg,#eee,#f5f5f5,#eee);background-size:200% 100%;animation:sk 1.1s linear infinite}
+    @keyframes sk{0%{background-position:0 0}100%{background-position:-200% 0}}
+  </style>
 </head>
 <body>
-    <!-- Login Screen -->
-    <div id="loginScreen" class="login-container">
-        <div class="login-box">
-            <h1>InventoryHub</h1>
-            <p>Billboard Inventory Management System</p>
-            <form onsubmit="handleLogin(event)">
-                <div class="form-group">
-                    <label>Email Address</label>
-                    <input type="email" id="loginEmail" placeholder="Enter your email" required>
-                </div>
-                <div class="form-group">
-                    <label>Password</label>
-                    <input type="password" id="loginPassword" placeholder="Enter password" required>
-                </div>
-                <div class="form-group">
-                    <label>Role</label>
-                    <select id="loginRole">
-                        <option value="media_owner">Media Owner</option>
-                        <option value="aggregator">Aggregator</option>
-                        <option value="admin">Admin</option>
-                    </select>
-                </div>
-                <button type="submit" class="login-btn">Login</button>
-            </form>
-            <div class="demo-note">
-                <strong>Demo Mode:</strong> Enter any email/password to login
-            </div>
+  <!-- Toast -->
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-            <div class="api-info" id="apiInfo">
-                <h3>API Documentation for LMX/MAX Integration</h3>
-                <p>Use these REST API endpoints to integrate inventory with other Moving Walls products:</p>
-                
-                <div class="api-endpoint">
-                    <h4>Get All Inventory</h4>
-                    <code>GET https://slokdinbenkwkqfoduwq.supabase.co/rest/v1/inventory_production</code>
-                    <p><strong>Headers:</strong></p>
-                    <pre>apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...</pre>
-                    <p><strong>Response:</strong> JSON array of all inventory items</p>
-                </div>
-
-                <div class="api-endpoint">
-                    <h4>Get Inventory by Country</h4>
-                    <code>GET https://slokdinbenkwkqfoduwq.supabase.co/rest/v1/inventory_production?country=eq.Malaysia</code>
-                    <p><strong>Use cases:</strong> Filter by country, state, or any field using Supabase query syntax</p>
-                </div>
-
-                <div class="api-endpoint">
-                    <h4>Get Active & Available Inventory Only</h4>
-                    <code>GET https://slokdinbenkwkqfoduwq.supabase.co/rest/v1/inventory_production?active=eq.true&available=eq.true</code>
-                    <p><strong>Use case:</strong> Show only bookable inventory in LMX/MAX</p>
-                </div>
-
-                <div class="api-endpoint">
-                    <h4>Push Inventory via API</h4>
-                    <code>POST https://slokdinbenkwkqfoduwq.supabase.co/rest/v1/inventory_production</code>
-                    <p><strong>Headers:</strong></p>
-                    <pre>Content-Type: application/json
-apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-Prefer: return=representation</pre>
-                    <p><strong>Body Example:</strong></p>
-                    <pre>{
-  "inventory_uuid": "INV-12345",
-  "board_name": "Times Square Billboard",
-  "country": "USA",
-  "state": "New York",
-  "billboard_type": "Digital",
-  "selling_standard_rate": 50000,
-  "selling_monthly_rate": 150000,
-  "active": true,
-  "available": true
-}</pre>
-                </div>
-
-                <div class="api-endpoint">
-                    <h4>Update Inventory Status</h4>
-                    <code>PATCH https://slokdinbenkwkqfoduwq.supabase.co/rest/v1/inventory_production?inventory_uuid=eq.INV-12345</code>
-                    <p><strong>Body:</strong></p>
-                    <pre>{"active": false, "available": false}</pre>
-                </div>
-
-                <button class="btn-secondary" onclick="hideAPIInfo()">Close</button>
-            </div>
+  <!-- ====== Login ====== -->
+  <div id="loginScreen" class="login-container">
+    <div class="login-box">
+      <h1>InventoryHub</h1>
+      <p>Billboard Inventory Management System</p>
+      <form onsubmit="handleLogin(event)">
+        <div class="form-group"><label>Email Address</label><input type="email" id="loginEmail" required placeholder="you@company.com"/></div>
+        <div class="form-group"><label>Password</label><input type="password" id="loginPassword" required placeholder="••••••••"/></div>
+        <div class="form-group">
+          <label>Role</label>
+          <select id="loginRole">
+            <option value="media_owner">Media Owner</option>
+            <option value="aggregator">Aggregator</option>
+            <option value="admin">Admin</option>
+          </select>
         </div>
+        <button class="login-btn" type="submit">Login</button>
+      </form>
+      <div class="demo-note"><strong>Demo Mode:</strong> Enter any email/password to login</div>
+    </div>
+  </div>
+
+  <!-- ====== App ====== -->
+  <div id="app" class="app hidden">
+    <div class="brandbar">
+      <div>
+        <h1>InventoryHub</h1>
+        <small id="userInfo">Signed in</small>
+      </div>
+      <div class="top-actions" role="toolbar" aria-label="Quick actions">
+        <button class="btn btn-secondary" onclick="syncNow()">Sync</button>
+        <button class="btn btn-secondary" onclick="exportCurrentView()">Export CSV</button>
+        <button class="btn btn-success" onclick="document.getElementById('csvFile').click()">Bulk Upload</button>
+        <button class="btn btn-warning" onclick="openAddModal()">Add Billboard</button>
+        <button class="btn logout-btn" onclick="handleLogout()">Logout</button>
+      </div>
     </div>
 
-    <!-- Main Dashboard -->
-    <div id="dashboard" class="hidden">
-        <div class="container">
-            <div class="header">
-                <div>
-                    <h1>InventoryHub - Production</h1>
-                    <p id="userInfo">User info</p>
-                </div>
-                <button class="logout-btn" onclick="handleLogout()">Logout</button>
-            </div>
-
-            <div class="stats">
-                <div class="stat-box">
-                    <div>Total Records</div>
-                    <strong id="totalRecords">-</strong>
-                </div>
-                <div class="stat-box">
-                    <div>Filtered Results</div>
-                    <strong id="filteredRecords">-</strong>
-                </div>
-                <div class="stat-box">
-                    <div>Active Sites</div>
-                    <strong id="activeSites">-</strong>
-                </div>
-                <div class="stat-box">
-                    <div>Countries</div>
-                    <strong id="totalCountries">-</strong>
-                </div>
-            </div>
-
-            <div class="filters">
-                <div class="filter-grid">
-                    <div class="filter-group">
-                        <label>Search</label>
-                        <input type="text" id="searchInput" placeholder="Board name, location...">
-                    </div>
-                    <div class="filter-group">
-                        <label>Country</label>
-                        <select id="countryFilter">
-                            <option value="">All Countries</option>
-                        </select>
-                    </div>
-                    <div class="filter-group">
-                        <label>State</label>
-                        <select id="stateFilter">
-                            <option value="">All States</option>
-                        </select>
-                    </div>
-                    <div class="filter-group">
-                        <label>Billboard Type</label>
-                        <select id="typeFilter">
-                            <option value="">All Types</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="toggle-group">
-                    <div class="toggle">
-                        <input type="checkbox" id="activeFilter" checked>
-                        <label for="activeFilter">Active Only</label>
-                    </div>
-                    <div class="toggle">
-                        <input type="checkbox" id="availableFilter" checked>
-                        <label for="availableFilter">Available Only</label>
-                    </div>
-                </div>
-                <div class="actions">
-                    <button class="btn-primary" onclick="applyFilters()">Apply Filters</button>
-                    <button class="btn-secondary" onclick="resetFilters()">Reset</button>
-                    <button class="btn-warning" onclick="openAddModal()">Add New Site</button>
-                    <input type="file" id="csvFile" accept=".csv,.xlsx" onchange="handleFileUpload(event)">
-                    <button class="btn-success" onclick="document.getElementById('csvFile').click()">Upload CSV</button>
-                    <button class="btn-secondary" onclick="downloadCSVTemplate()">Download Template</button>
-                    <button class="btn-secondary" onclick="showAPIInfo()">API Documentation</button>
-                </div>
-            </div>
-
-            <div class="table-container">
-                <div id="loading" class="loading">Loading inventory...</div>
-                <table id="inventoryTable" style="display: none;">
-                    <thead>
-                        <tr>
-                            <th>Board Name</th>
-                            <th>Location</th>
-                            <th>Country</th>
-                            <th>State</th>
-                            <th>Type</th>
-                            <th>Standard Rate</th>
-                            <th>Monthly Rate</th>
-                            <th>Screens</th>
-                            <th>Status</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="inventoryBody"></tbody>
-                </table>
-                <div class="pagination" id="pagination" style="display: none;">
-                    <div class="page-info" id="pageInfo"></div>
-                    <div class="page-controls">
-                        <button class="btn-secondary" onclick="previousPage()" id="prevBtn">Previous</button>
-                        <button class="btn-secondary" onclick="nextPage()" id="nextBtn">Next</button>
-                    </div>
-                </div>
-            </div>
-        </div>
+    <!-- Tabs -->
+    <div class="tabs" role="tablist" aria-label="Primary navigation">
+      <button id="tab-dashboard" class="tab" role="tab" aria-selected="true" onclick="setTab('dashboard')">Dashboard</button>
+      <button id="tab-inventory" class="tab" role="tab" aria-selected="false" onclick="setTab('inventory')">Inventory</button>
+      <button id="tab-map" class="tab" role="tab" aria-selected="false" onclick="setTab('map')">Map View</button>
     </div>
 
-    <!-- Add/Edit Modal -->
-    <div id="addModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2 id="modalTitle">Add New Site</h2>
-                <button class="close-btn" onclick="closeModal()">&times;</button>
-            </div>
-            <form onsubmit="handleSubmit(event)">
-                <div class="form-group">
-                    <label>Board Name *</label>
-                    <input type="text" id="boardName" required>
-                </div>
-                <div class="form-group">
-                    <label>Display Name</label>
-                    <input type="text" id="displayName">
-                </div>
-                <div class="form-group">
-                    <label>Reference ID</label>
-                    <input type="text" id="referenceId">
-                </div>
-                <div class="form-group">
-                    <label>Country *</label>
-                    <input type="text" id="country" required>
-                </div>
-                <div class="form-group">
-                    <label>State</label>
-                    <input type="text" id="state">
-                </div>
-                <div class="form-group">
-                    <label>District</label>
-                    <input type="text" id="district">
-                </div>
-                <div class="form-group">
-                    <label>Address</label>
-                    <input type="text" id="address">
-                </div>
-                <div class="form-group">
-                    <label>Billboard Type</label>
-                    <input type="text" id="billboardType">
-                </div>
-                <div class="form-group">
-                    <label>Standard Rate</label>
-                    <input type="number" id="standardRate" step="0.01">
-                </div>
-                <div class="form-group">
-                    <label>Monthly Rate</label>
-                    <input type="number" id="monthlyRate" step="0.01">
-                </div>
-                <div class="form-group">
-                    <label>Number of Screens</label>
-                    <input type="number" id="noOfScreens">
-                </div>
-                <div class="form-group">
-                    <label>Active Status</label>
-                    <select id="activeStatus">
-                        <option value="true">Active</option>
-                        <option value="false">Inactive</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Availability</label>
-                    <select id="availableStatus">
-                        <option value="true">Available</option>
-                        <option value="false">Not Available</option>
-                    </select>
-                </div>
-                <button type="submit" class="login-btn" id="submitBtn">Add Site</button>
-            </form>
+    <!-- Panes -->
+    <div class="tabpanes">
+      <!-- Dashboard Pane -->
+      <section id="pane-dashboard" class="pane" role="tabpanel" aria-labelledby="tab-dashboard">
+        <div class="stats">
+          <div class="stat"><span class="dot" aria-hidden="true"></span><div class="label">Total Billboards</div><div class="value" id="kpiTotal">-</div></div>
+          <div class="stat"><span class="dot" aria-hidden="true"></span><div class="label">Filtered Results</div><div class="value" id="kpiFiltered">-</div></div>
+          <div class="stat"><span class="dot" aria-hidden="true"></span><div class="label">Active Sites</div><div class="value" id="kpiActive">-</div></div>
+          <div class="stat"><span class="dot" aria-hidden="true"></span><div class="label">Countries</div><div class="value" id="kpiCountries">-</div></div>
         </div>
+
+        <!-- You can add mini charts later; keeping this lightweight for parity -->
+        <div class="filterbox" style="margin-top:14px">
+          <p style="color:#475569">Welcome! Use the <strong>Inventory</strong> tab to manage billboards, or open <strong>Map View</strong> to visualize locations (coming soon).</p>
+        </div>
+      </section>
+
+      <!-- Inventory Pane -->
+      <section id="pane-inventory" class="pane hidden" role="tabpanel" aria-labelledby="tab-inventory">
+        <div class="filterbox">
+          <div class="filter-grid">
+            <div>
+              <label for="searchInput">Search</label>
+              <input id="searchInput" type="text" placeholder="Board name, location...">
+            </div>
+            <div>
+              <label for="countryFilter">Country</label>
+              <select id="countryFilter"><option value="">All Countries</option></select>
+            </div>
+            <div>
+              <label for="stateFilter">State</label>
+              <select id="stateFilter"><option value="">All States</option></select>
+            </div>
+            <div>
+              <label for="typeFilter">Billboard Type</label>
+              <select id="typeFilter"><option value="">All Types</option></select>
+            </div>
+          </div>
+
+          <div class="toggles">
+            <label><input type="checkbox" id="activeFilter" checked> Active Only</label>
+            <label><input type="checkbox" id="availableFilter" checked> Available Only</label>
+
+            <div class="actions">
+              <button class="btn btn-primary" onclick="applyFilters()">Apply Filters</button>
+              <button class="btn btn-secondary" onclick="resetFilters()">Reset</button>
+              <input id="csvFile" type="file" accept=".csv,.xlsx" onchange="handleFileUpload(event)" style="display:none">
+              <button class="btn btn-secondary" onclick="downloadCSVTemplate()">Download Template</button>
+              <button id="btnList" class="btn btn-secondary" aria-pressed="true" onclick="setView('list')">List</button>
+              <button id="btnGrid" class="btn btn-secondary" aria-pressed="false" onclick="setView('grid')">Grid</button>
+            </div>
+          </div>
+
+          <div id="dropzone" class="dropzone" style="margin-top:10px">
+            <strong>Drop CSV here</strong> or
+            <button class="btn btn-secondary" type="button" onclick="document.getElementById('csvFile').click()">Browse</button>
+          </div>
+        </div>
+
+        <div class="tablewrap" aria-live="polite">
+          <div id="loading" class="loading">Loading inventory...</div>
+
+          <table id="inventoryTable" style="display:none">
+            <thead>
+            <tr>
+              <th scope="col">Board Name</th>
+              <th scope="col">Location</th>
+              <th scope="col">Country</th>
+              <th scope="col">State</th>
+              <th scope="col">Type</th>
+              <th scope="col">Standard Rate</th>
+              <th scope="col">Monthly Rate</th>
+              <th scope="col">Screens</th>
+              <th scope="col">Status</th>
+              <th scope="col">Actions</th>
+            </tr>
+            </thead>
+            <tbody id="inventoryBody"></tbody>
+          </table>
+
+          <div id="inventoryGrid" class="grid hidden"></div>
+
+          <div id="pagination" class="pagination" style="display:none">
+            <div id="pageInfo" style="color:#64748b"></div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <select id="rowsSelect" class="rows-select">
+                <option value="25">25</option>
+                <option value="50" selected>50</option>
+                <option value="100">100</option>
+              </select>
+              <button class="btn btn-secondary" onclick="firstPage()">« First</button>
+              <button id="prevBtn" class="btn btn-secondary" onclick="previousPage()">‹ Prev</button>
+              <button id="nextBtn" class="btn btn-secondary" onclick="nextPage()">Next ›</button>
+              <button class="btn btn-secondary" onclick="lastPage()">Last »</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Map Pane -->
+      <section id="pane-map" class="pane hidden" role="tabpanel" aria-labelledby="tab-map">
+        <div class="filterbox">
+          <h3 style="margin-bottom:6px">Map View</h3>
+          <p style="color:#475569">A polished map experience with markers, legend, and “Route All” will appear here. You can still manage inventory from the <strong>Inventory</strong> tab meanwhile.</p>
+        </div>
+        <div style="background:#eef2ff;border:2px dashed #c7d2fe;border-radius:12px;height:360px;display:flex;align-items:center;justify-content:center;color:#334155">
+          Maps placeholder
+        </div>
+      </section>
     </div>
+  </div>
 
-    <script>
-        const SUPABASE_URL = 'https://slokdinbenkwkqfoduwq.supabase.co';
-        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNsb2tkaW5iZW5rd2txZm9kdXdxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkyMTQyMzEsImV4cCI6MjA3NDc5MDIzMX0.gXxq2O2PXtGvShnOxWQmFZByAI8qGWpoMqh5-bXeolg';
+  <!-- ====== Add/Edit Modal ====== -->
+  <div id="addModal" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:900;padding:16px">
+    <div class="pane" style="max-width:640px;width:100%;background:#fff;border-radius:14px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <h2 id="modalTitle">Add New Site</h2>
+        <button class="btn btn-secondary btn-sm" onclick="closeModal()">Close</button>
+      </div>
+      <form onsubmit="handleSubmit(event)">
+        <div class="form-group"><label for="boardName">Board Name *</label><input id="boardName" required></div>
+        <div class="form-group"><label for="displayName">Display Name</label><input id="displayName"></div>
+        <div class="form-group"><label for="referenceId">Reference ID</label><input id="referenceId"></div>
+        <div class="form-group"><label for="country">Country *</label><input id="country" required></div>
+        <div class="form-group"><label for="state">State</label><input id="state"></div>
+        <div class="form-group"><label for="district">District</label><input id="district"></div>
+        <div class="form-group"><label for="address">Address</label><input id="address"></div>
+        <div class="form-group"><label for="billboardType">Billboard Type</label><input id="billboardType"></div>
+        <div class="form-group"><label for="standardRate">Standard Rate</label><input id="standardRate" type="number" step="0.01"></div>
+        <div class="form-group"><label for="monthlyRate">Monthly Rate</label><input id="monthlyRate" type="number" step="0.01"></div>
+        <div class="form-group"><label for="noOfScreens">Number of Screens</label><input id="noOfScreens" type="number"></div>
+        <div class="form-group"><label for="activeStatus">Active Status</label>
+          <select id="activeStatus"><option value="true">Active</option><option value="false">Inactive</option></select>
+        </div>
+        <div class="form-group"><label for="availableStatus">Availability</label>
+          <select id="availableStatus"><option value="true">Available</option><option value="false">Not Available</option></select>
+        </div>
+        <button id="submitBtn" class="btn btn-primary" type="submit">Add Site</button>
+      </form>
+    </div>
+  </div>
 
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  <script>
+    /* ====== Supabase Setup ====== */
+    const SUPABASE_URL='https://slokdinbenkwkqfoduwq.supabase.co';
+    const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNsb2tkaW5iZW5rd2txZm9kdXdxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkyMTQyMzEsImV4cCI6MjA3NDc5MDIzMX0.gXxq2O2PXtGvShnOxWQmFZByAI8qGWpoMqh5-bXeolg';
+    const supabase=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 
-        let currentPage = 1;
-        const rowsPerPage = 50;
-        let totalCount = 0;
-        let filteredCount = 0;
-        let currentUser = null;
-        let editingId = null;
+    /* ====== State ====== */
+    let currentUser=null;
+    let currentPage=1, rowsPerPage=50, filteredCount=0, totalCount=0;
+    let lastData=[]; // cache of current page for grid/export
+    let viewMode='list'; // 'list' | 'grid'
 
-        function handleLogin(event) {
-            event.preventDefault();
-            const email = document.getElementById('loginEmail').value;
-            const role = document.getElementById('loginRole').value;
-            currentUser = { email, role };
-            document.getElementById('userInfo').textContent = `${email} (${role})`;
-            document.getElementById('loginScreen').classList.add('hidden');
-            document.getElementById('dashboard').classList.remove('hidden');
-            loadStats();
-            loadInventory();
+    /* ====== Utils ====== */
+    const $=sel=>document.querySelector(sel);
+    function show(el){el.classList.remove('hidden')}
+    function hide(el){el.classList.add('hidden')}
+    function toast(msg,type){const t=$("#toast");t.textContent=msg;t.className='toast'+(type==='error'?' error':'');requestAnimationFrame(()=>t.classList.add('show'));setTimeout(()=>t.classList.remove('show'),2400)}
+    function escapeHtml(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]))}
+    function fmt(n){return Number(n).toLocaleString()}
+
+    /* ====== Auth (demo) ====== */
+    function handleLogin(e){
+      e.preventDefault();
+      const email=$("#loginEmail").value, role=$("#loginRole").value;
+      currentUser={email,role};
+      $("#userInfo").textContent=`${email} (${role})`;
+      hide($("#loginScreen")); show($("#app"));
+      loadStats(); loadInventory(); toast('Welcome 👋');
+      setTab(sessionStorage.getItem('tab') || 'dashboard', true);
+    }
+    function handleLogout(){ currentUser=null; show($("#loginScreen")); hide($("#app")); }
+
+    /* ====== Tabs ====== */
+    function setTab(tab, initial=false){
+      sessionStorage.setItem('tab', tab);
+      ['dashboard','inventory','map'].forEach(t=>{
+        document.getElementById(`pane-${t}`).classList.toggle('hidden', t!==tab);
+        document.getElementById(`tab-${t}`).setAttribute('aria-selected', String(t===tab));
+      });
+      if(!initial && tab==='inventory'){ loadInventory(); }
+    }
+
+    /* ====== Stats ====== */
+    async function loadStats(){
+      const total = await supabase.from('inventory_production').select('*',{count:'exact',head:true});
+      totalCount = total.count||0; $("#kpiTotal").textContent=fmt(totalCount);
+
+      const act = await supabase.from('inventory_production').select('*',{count:'exact',head:true}).eq('active',true);
+      $("#kpiActive").textContent=fmt(act.count||0);
+
+      const {data:countries} = await supabase.from('inventory_production').select('country');
+      const uniqueCountries=[...new Set((countries||[]).map(r=>r.country))].filter(Boolean).sort();
+      $("#kpiCountries").textContent=uniqueCountries.length;
+
+      // Fill filters
+      const countrySel=$("#countryFilter"); countrySel.innerHTML='<option value="">All Countries</option>';
+      uniqueCountries.forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;countrySel.appendChild(o);});
+
+      const {data:types} = await supabase.from('inventory_production').select('billboard_type');
+      const uniqueTypes=[...new Set((types||[]).map(r=>r.billboard_type))].filter(Boolean).sort();
+      const typeSel=$("#typeFilter"); typeSel.innerHTML='<option value="">All Types</option>';
+      uniqueTypes.forEach(t=>{const o=document.createElement('option');o.value=t;o.textContent=t;typeSel.appendChild(o);});
+    }
+
+    $("#countryFilter").addEventListener('change', async e=>{
+      const country=e.target.value; const stateSel=$("#stateFilter");
+      stateSel.innerHTML='<option value="">All States</option>';
+      if(!country) return;
+      const {data:states}=await supabase.from('inventory_production').select('state').eq('country',country);
+      [...new Set((states||[]).map(r=>r.state))].filter(Boolean).sort().forEach(s=>{
+        const o=document.createElement('option');o.value=s;o.textContent=s;stateSel.appendChild(o);
+      });
+    });
+
+    /* ====== Inventory ====== */
+    function setView(mode){
+      viewMode=mode; sessionStorage.setItem('view',mode);
+      $("#btnList").setAttribute('aria-pressed', String(mode==='list'));
+      $("#btnGrid").setAttribute('aria-pressed', String(mode==='grid'));
+      if(mode==='grid'){ $("#inventoryGrid").classList.remove('hidden'); $("#inventoryTable").style.display='none'; initCarousels(); }
+      else{ $("#inventoryGrid").classList.add('hidden'); $("#inventoryTable").style.display='table'; }
+    }
+
+    function showSkeletons(){
+      const loading=$("#loading"); loading.innerHTML='';
+      for(let i=0;i<6;i++){const row=document.createElement('div');row.className='skeleton-row';for(let c=0;c<10;c++){const d=document.createElement('div');d.className='sk';row.appendChild(d);}loading.appendChild(row);}
+      loading.style.display='block'; $("#inventoryTable").style.display='none'; $("#inventoryGrid").classList.add('hidden'); $("#pagination").style.display='none';
+    }
+
+    async function loadInventory(){
+      showSkeletons();
+      let q=supabase.from('inventory_production').select('*',{count:'exact'});
+      const s=$("#searchInput").value.trim(); if(s) q=q.or(`board_name.ilike.%${s}%,display_name.ilike.%${s}%,address.ilike.%${s}%,reference_id.ilike.%${s}%,inventory_uuid.ilike.%${s}%`);
+      const country=$("#countryFilter").value; if(country) q=q.eq('country',country);
+      const state=$("#stateFilter").value; if(state) q=q.eq('state',state);
+      const type=$("#typeFilter").value; if(type) q=q.eq('billboard_type',type);
+      if($("#activeFilter").checked) q=q.eq('active',true);
+      if($("#availableFilter").checked) q=q.eq('available',true);
+
+      const from=(currentPage-1)*rowsPerPage, to=from+rowsPerPage-1;
+      const {data,error,count}=await q.range(from,to);
+      $("#loading").style.display='none';
+      if(error){toast(error.message,'error');return}
+
+      filteredCount=count||0; $("#kpiFiltered").textContent=fmt(filteredCount);
+      lastData=data||[];
+
+      displayTable(lastData);
+      renderGrid(lastData);
+      updatePagination(filteredCount);
+      $("#pagination").style.display='flex';
+
+      // restore view mode
+      setView(sessionStorage.getItem('view')||viewMode);
+    }
+
+    function displayTable(items){
+      const tb=$("#inventoryBody"); tb.innerHTML='';
+      if(items.length===0){
+        $("#inventoryTable").style.display='table';
+        const tr=document.createElement('tr');const td=document.createElement('td');td.colSpan=10;td.innerHTML='<div class="loading">No inventory matches your filters.</div>';tr.appendChild(td);tb.appendChild(tr);return;
+      }
+      items.forEach(item=>{
+        const row=document.createElement('tr');
+        row.innerHTML=`
+          <td><strong>${escapeHtml(item.board_name||'-')}</strong></td>
+          <td>${escapeHtml(item.address||'-')}</td>
+          <td>${escapeHtml(item.country||'-')}</td>
+          <td>${escapeHtml(item.state||'-')}</td>
+          <td>${escapeHtml(item.billboard_type||'-')}</td>
+          <td class="price">${item.selling_standard_rate? '$'+fmt(item.selling_standard_rate):'-'}</td>
+          <td class="price">${item.selling_monthly_rate? '$'+fmt(item.selling_monthly_rate):'-'}</td>
+          <td>${item.no_of_screens??'-'}</td>
+          <td>
+            <span class="badge ${item.active?'badge-active':'badge-inactive'}">${item.active?'Active':'Inactive'}</span>
+            ${item.available?'<span class="badge badge-available">Available</span>':''}
+          </td>
+          <td>
+            <button class="btn btn-sm btn-primary" onclick="toggleStatus('${escapeHtml(item.inventory_uuid)}', ${!!item.active}, '${escapeHtml(item.board_name||'')}')">${item.active?'Mark Inactive':'Mark Active'}</button>
+            <button class="btn btn-sm btn-danger" onclick="deleteItem('${escapeHtml(item.inventory_uuid)}', '${escapeHtml(item.board_name||'')}')">Delete</button>
+          </td>`;
+        tb.appendChild(row);
+      });
+      $("#inventoryTable").style.display='table';
+    }
+
+    function renderGrid(items){
+      const grid=$("#inventoryGrid"); grid.innerHTML='';
+      items.forEach(item=>{
+        const urls = String(item.images||'').split(/[,|]/).map(s=>s.trim()).filter(Boolean);
+        const card=document.createElement('div'); card.className='card';
+        const dots = urls.map((_,i)=>`<span class="dot ${i===0?'active':''}"></span>`).join('');
+        card.innerHTML=`
+          <div class="carousel">
+            ${urls.length? urls.map((u,i)=>`<img src="${escapeHtml(u)}" alt="billboard" class="${i===0?'active':''}">`).join('') : '<img class="active" alt="" src="https://picsum.photos/600/400?random=5">'}
+            <div class="dots">${dots}</div>
+          </div>
+          <div class="card-body">
+            <div class="card-title">${escapeHtml(item.display_name||item.board_name||'Billboard')}</div>
+            <div class="card-meta">${escapeHtml(item.address||'-')}</div>
+            <div class="card-badges">
+              <span class="badge ${item.active?'badge-active':'badge-inactive'}">${item.active?'Active':'Inactive'}</span>
+              ${item.available?'<span class="badge badge-available">Available</span>':''}
+              <span class="badge" style="background:#f3f4f6;color:#111827">${escapeHtml(item.billboard_type||'Type')}</span>
+            </div>
+            <div style="margin-top:8px">
+              <strong class="price">${item.selling_standard_rate? '$'+fmt(item.selling_standard_rate):'-'}</strong>
+              <span style="color:#6b7280"> std • </span>
+              <strong class="price">${item.selling_monthly_rate? '$'+fmt(item.selling_monthly_rate):'-'}</strong>
+              <span style="color:#6b7280">/mo</span>
+            </div>
+            <div class="card-actions">
+              <button class="btn btn-sm btn-primary" onclick="toggleStatus('${escapeHtml(item.inventory_uuid)}', ${!!item.active}, '${escapeHtml(item.board_name||'')}')">${item.active?'Mark Inactive':'Mark Active'}</button>
+              <button class="btn btn-sm btn-danger" onclick="deleteItem('${escapeHtml(item.inventory_uuid)}', '${escapeHtml(item.board_name||'')}')">Delete</button>
+            </div>
+          </div>`;
+        grid.appendChild(card);
+      });
+      initCarousels();
+    }
+
+    function initCarousels(){
+      document.querySelectorAll('.carousel').forEach(car=>{
+        const imgs=[...car.querySelectorAll('img')]; if(imgs.length<2) return;
+        const dots=[...car.querySelectorAll('.dot')]; let idx=0;
+        setInterval(()=>{ imgs[idx].classList.remove('active'); dots[idx]?.classList.remove('active'); idx=(idx+1)%imgs.length; imgs[idx].classList.add('active'); dots[idx]?.classList.add('active'); }, 3000);
+      });
+    }
+
+    function updatePagination(total){
+      const totalPages=Math.max(1, Math.ceil(total/rowsPerPage));
+      const from=(total===0)?0:(currentPage-1)*rowsPerPage+1;
+      const to=Math.min(currentPage*rowsPerPage,total);
+      $("#pageInfo").textContent=`Showing ${from}-${to} of ${fmt(total)} (Page ${currentPage} of ${totalPages})`;
+      $("#prevBtn").disabled=currentPage===1; $("#nextBtn").disabled=currentPage>=totalPages;
+      sessionStorage.setItem('page', String(currentPage));
+      sessionStorage.setItem('rows', String(rowsPerPage));
+    }
+
+    function applyFilters(){ currentPage=1; loadInventory(); }
+    function resetFilters(){ $("#searchInput").value=''; $("#countryFilter").value=''; $("#stateFilter").value=''; $("#typeFilter").value=''; $("#activeFilter").checked=true; $("#availableFilter").checked=true; currentPage=1; loadInventory(); }
+    function firstPage(){ if(currentPage!==1){ currentPage=1; loadInventory(); } }
+    function previousPage(){ if(currentPage>1){ currentPage--; loadInventory(); } }
+    function nextPage(){ const totalPages=Math.max(1,Math.ceil(filteredCount/rowsPerPage)); if(currentPage<totalPages){ currentPage++; loadInventory(); } }
+    function lastPage(){ const totalPages=Math.max(1,Math.ceil(filteredCount/rowsPerPage)); if(currentPage!==totalPages){ currentPage=totalPages; loadInventory(); } }
+
+    $("#rowsSelect").addEventListener('change',e=>{ rowsPerPage=parseInt(e.target.value,10)||50; currentPage=1; loadInventory(); });
+
+    /* ====== CRUD ====== */
+    function openAddModal(){
+      $("#modalTitle").textContent='Add New Site'; $("#submitBtn").textContent='Add Site';
+      const form=$("#addModal form"); form.reset(); $("#activeStatus").value='true'; $("#availableStatus").value='true';
+      show($("#addModal")); setTimeout(()=>$("#boardName").focus(),0);
+    }
+    function closeModal(){ hide($("#addModal")); }
+
+    async function handleSubmit(e){
+      e.preventDefault();
+      const data={
+        inventory_uuid:'INV-'+Date.now(),
+        board_name:$("#boardName").value,
+        display_name:$("#displayName").value,
+        reference_id:$("#referenceId").value,
+        country:$("#country").value,
+        state:$("#state").value,
+        district:$("#district").value,
+        address:$("#address").value,
+        billboard_type:$("#billboardType").value,
+        selling_standard_rate:parseFloat($("#standardRate").value)||null,
+        selling_monthly_rate:parseFloat($("#monthlyRate").value)||null,
+        no_of_screens:parseInt($("#noOfScreens").value)||null,
+        active:$("#activeStatus").value==='true',
+        available:$("#availableStatus").value==='true'
+      };
+      const {error}=await supabase.from('inventory_production').insert([data]);
+      if(error) return toast(error.message,'error');
+      toast('Site added'); closeModal(); await loadStats(); await loadInventory();
+    }
+
+    async function toggleStatus(uuid, currentStatus, boardName){
+      const newStatus=!currentStatus; const statusText=newStatus?'Active':'Inactive';
+      if(!confirm(`Change "${boardName}" to ${statusText}?`)) return;
+      const {data,error}=await supabase.from('inventory_production').update({active:newStatus}).eq('inventory_uuid',uuid).select();
+      if(error) return toast(error.message,'error');
+      if(data&&data.length){ toast(`Changed to ${statusText}`); await loadStats(); await loadInventory(); }
+      else toast('No rows updated','error');
+    }
+
+    async function deleteItem(uuid,name){
+      if(!confirm(`Delete ${name}?`)) return;
+      const {error}=await supabase.from('inventory_production').delete().eq('inventory_uuid',uuid);
+      if(error) return toast('Delete failed','error');
+      toast('Deleted'); await loadStats(); await loadInventory();
+    }
+
+    /* ====== CSV & Export ====== */
+    const dz=$("#dropzone");
+    ['dragenter','dragover'].forEach(evt=>dz.addEventListener(evt,e=>{e.preventDefault();dz.classList.add('drag')}));
+    ['dragleave','drop'].forEach(evt=>dz.addEventListener(evt,e=>{e.preventDefault();dz.classList.remove('drag')}));
+    dz.addEventListener('drop',e=>{const f=e.dataTransfer.files?.[0]; if(f) handleFileUpload({target:{files:[f]}})});
+
+    function downloadCSVTemplate(){
+      const template=`inventory_uuid,board_name,display_name,reference_id,country,state,district,address,latitude,longitude,gps_coordinates,media_owner,active,available,billboard_type,board_format,images,selling_standard_rate,selling_monthly_rate,no_of_screens,resolution,programmatic_enabled,exposure_to_dsp
+INV-SAMPLE-001,Downtown Billboard,Main Street Digital,REF-001,USA,California,Los Angeles,123 Main St,34.0522,-118.2437,"34.0522,-118.2437",ABC Media,true,true,Digital,Landscape,https://example.com/img1.jpg|https://example.com/img2.jpg,5000,15000,1,1920x1080,Yes,Yes`;
+      const blob=new Blob([template],{type:'text/csv'}); const a=document.createElement('a');
+      a.href=URL.createObjectURL(blob); a.download='inventory_template.csv'; a.click(); URL.revokeObjectURL(a.href); toast('Template downloaded');
+    }
+
+    function exportCurrentView(){
+      const headers=["Board Name","Location","Country","State","Type","Standard Rate","Monthly Rate","Screens","Active","Available"];
+      let rows=[];
+      if(viewMode==='list'){
+        rows=[...document.querySelectorAll('#inventoryBody tr')].map(tr=>{
+          const td=[...tr.querySelectorAll('td')];
+          if(!td.length) return null;
+          const st=td[8].innerText;
+          return [td[0].innerText.trim(),td[1].innerText.trim(),td[2].innerText.trim(),td[3].innerText.trim(),td[4].innerText.trim(),
+                  td[5].innerText.replace(/,/g,''),td[6].innerText.replace(/,/g,''),td[7].innerText.trim(),
+                  String(/Active/.test(st)&&!/Inactive/.test(st)), String(/Available/.test(st))];
+        }).filter(Boolean);
+      }else{
+        rows=lastData.map(i=>[i.board_name||'',i.address||'',i.country||'',i.state||'',i.billboard_type||'',
+              i.selling_standard_rate||'',i.selling_monthly_rate||'',i.no_of_screens??'',String(!!i.active),String(!!i.available)]);
+      }
+      const csv=[headers,...rows].map(r=>r.map(x=>`"${String(x).replace(/"/g,'""')}"`).join(',')).join('\n');
+      const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'})); a.download=`inventory_${Date.now()}.csv`; a.click(); URL.revokeObjectURL(a.href); toast('Exported');
+    }
+
+    function handleFileUpload(e){
+      const file=e.target.files?.[0]; if(!file) return;
+      const reader=new FileReader();
+      reader.onload=async ev=>{
+        const lines=String(ev.target.result||'').split('\n'); if(!lines.length) return toast('CSV empty','error');
+        const items=[];
+        for(let i=1;i<lines.length;i++){
+          if(!lines[i].trim()) continue;
+          const v=lines[i].split(',').map(s=>s.trim());
+          items.push({
+            inventory_uuid:v[0]||'INV-'+Date.now()+'-'+i, board_name:v[1]||'', display_name:v[2]||v[1]||'', reference_id:v[3]||'',
+            country:v[4]||'', state:v[5]||'', district:v[6]||'', address:v[7]||'',
+            latitude:v[8]?parseFloat(v[8]):null, longitude:v[9]?parseFloat(v[9]):null, gps_coordinates:v[10]||'',
+            media_owner:v[11]||'', active:v[12]==='true'||v[12]==='1'||v[12]==='TRUE', available:v[13]==='true'||v[13]==='1'||v[13]==='TRUE',
+            billboard_type:v[14]||'', board_format:v[15]||'', images:v[16]||'',
+            selling_standard_rate:v[17]?parseFloat(v[17]):null, selling_monthly_rate:v[18]?parseFloat(v[18]):null,
+            no_of_screens: v[19]?parseInt(v[19]):null, resolution:v[20]||'', programmatic_enabled:v[21]||'No', exposure_to_dsp:v[22]||'No'
+          });
         }
-
-        function handleLogout() {
-            currentUser = null;
-            document.getElementById('loginScreen').classList.remove('hidden');
-            document.getElementById('dashboard').classList.add('hidden');
+        if(!items.length) return toast('No valid rows','error');
+        if(!confirm(`Upload ${items.length} items?`)) return;
+        let uploaded=0; const batch=100;
+        for(let i=0;i<items.length;i+=batch){
+          const {error}=await supabase.from('inventory_production').insert(items.slice(i,i+batch));
+          if(error){toast(error.message,'error'); break;} uploaded+=Math.min(batch, items.length-i);
         }
+        toast(`Uploaded ${uploaded}`); $("#csvFile").value=''; await loadStats(); await loadInventory();
+      };
+      reader.readAsText(file);
+    }
 
-        async function loadStats() {
-            const { count } = await supabase
-                .from('inventory_production')
-                .select('*', { count: 'exact', head: true });
-            
-            totalCount = count;
-            document.getElementById('totalRecords').textContent = count.toLocaleString();
+    /* ====== Misc ====== */
+    function syncNow(){ loadStats(); loadInventory(); toast('Synced'); }
 
-            const { count: activeCount } = await supabase
-                .from('inventory_production')
-                .select('*', { count: 'exact', head: true })
-                .eq('active', true);
-            
-            document.getElementById('activeSites').textContent = activeCount?.toLocaleString() || 0;
+    window.addEventListener('load', ()=>{
+      const savedRows=parseInt(sessionStorage.getItem('rows')||'50',10); rowsPerPage=isNaN(savedRows)?50:savedRows; $("#rowsSelect").value=String(rowsPerPage);
+      const savedView=sessionStorage.getItem('view'); if(savedView) viewMode=savedView;
+      const savedPage=parseInt(sessionStorage.getItem('page')||'1',10); if(!isNaN(savedPage)) currentPage=savedPage;
+    });
 
-            const { data: countries } = await supabase
-                .from('inventory_production')
-                .select('country');
-            
-            const uniqueCountries = [...new Set(countries.map(r => r.country))].filter(Boolean);
-            document.getElementById('totalCountries').textContent = uniqueCountries.length;
-
-            const countryFilter = document.getElementById('countryFilter');
-            countryFilter.innerHTML = '<option value="">All Countries</option>';
-            uniqueCountries.sort().forEach(country => {
-                const option = document.createElement('option');
-                option.value = country;
-                option.textContent = country;
-                countryFilter.appendChild(option);
-            });
-
-            const { data: types } = await supabase
-                .from('inventory_production')
-                .select('billboard_type');
-            
-            const uniqueTypes = [...new Set(types.map(r => r.billboard_type))].filter(Boolean);
-            const typeFilter = document.getElementById('typeFilter');
-            typeFilter.innerHTML = '<option value="">All Types</option>';
-            uniqueTypes.sort().forEach(type => {
-                const option = document.createElement('option');
-                option.value = type;
-                option.textContent = type;
-                typeFilter.appendChild(option);
-            });
-        }
-
-        document.getElementById('countryFilter').addEventListener('change', async (e) => {
-            const country = e.target.value;
-            const stateFilter = document.getElementById('stateFilter');
-            stateFilter.innerHTML = '<option value="">All States</option>';
-
-            if (country) {
-                const { data: states } = await supabase
-                    .from('inventory_production')
-                    .select('state')
-                    .eq('country', country);
-                
-                const uniqueStates = [...new Set(states.map(r => r.state))].filter(Boolean);
-                uniqueStates.sort().forEach(state => {
-                    const option = document.createElement('option');
-                    option.value = state;
-                    option.textContent = state;
-                    stateFilter.appendChild(option);
-                });
-            }
-        });
-
-        async function loadInventory() {
-            document.getElementById('loading').style.display = 'block';
-            document.getElementById('inventoryTable').style.display = 'none';
-
-            let query = supabase
-                .from('inventory_production')
-                .select('*', { count: 'exact' });
-
-            const searchTerm = document.getElementById('searchInput').value.trim();
-            if (searchTerm) {
-                query = query.or(`board_name.ilike.%${searchTerm}%,display_name.ilike.%${searchTerm}%,address.ilike.%${searchTerm}%,reference_id.ilike.%${searchTerm}%,inventory_uuid.ilike.%${searchTerm}%`);
-            }
-
-            const country = document.getElementById('countryFilter').value;
-            if (country) query = query.eq('country', country);
-
-            const state = document.getElementById('stateFilter').value;
-            if (state) query = query.eq('state', state);
-
-            const type = document.getElementById('typeFilter').value;
-            if (type) query = query.eq('billboard_type', type);
-
-            if (document.getElementById('activeFilter').checked) {
-                query = query.eq('active', true);
-            }
-
-            if (document.getElementById('availableFilter').checked) {
-                query = query.eq('available', true);
-            }
-
-            const from = (currentPage - 1) * rowsPerPage;
-            const to = from + rowsPerPage - 1;
-
-            const { data, error, count } = await query.range(from, to);
-
-            document.getElementById('loading').style.display = 'none';
-
-            if (error) {
-                console.error('Error:', error);
-                return;
-            }
-
-            filteredCount = count;
-            document.getElementById('filteredRecords').textContent = count.toLocaleString();
-
-            if (data && data.length > 0) {
-                displayInventory(data);
-                updatePagination(count);
-            }
-        }
-
-        function displayInventory(data) {
-            const tbody = document.getElementById('inventoryBody');
-            tbody.innerHTML = '';
-
-            data.forEach(item => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td><strong>${item.board_name || '-'}</strong></td>
-                    <td>${item.address || '-'}</td>
-                    <td>${item.country || '-'}</td>
-                    <td>${item.state || '-'}</td>
-                    <td>${item.billboard_type || '-'}</td>
-                    <td class="price">${item.selling_standard_rate ? '$' + item.selling_standard_rate.toLocaleString() : '-'}</td>
-                    <td class="price">${item.selling_monthly_rate ? '$' + item.selling_monthly_rate.toLocaleString() : '-'}</td>
-                    <td>${item.no_of_screens || '-'}</td>
-                    <td>
-                        <span class="badge ${item.active ? 'badge-active' : 'badge-inactive'}">${item.active ? 'Active' : 'Inactive'}</span>
-                        ${item.available ? '<span class="badge badge-available">Available</span>' : ''}
-                    </td>
-                    <td class="action-btns">
-                        <button class="btn-primary btn-sm" onclick="toggleStatus('${item.inventory_uuid}', ${item.active}, '${item.board_name}')">
-                            ${item.active ? 'Mark Inactive' : 'Mark Active'}
-                        </button>
-                        <button class="btn-danger btn-sm" onclick="deleteItem('${item.inventory_uuid}', '${item.board_name}')">Delete</button>
-                    </td>
-                `;
-                tbody.appendChild(row);
-            });
-
-            document.getElementById('inventoryTable').style.display = 'table';
-            document.getElementById('pagination').style.display = 'flex';
-        }
-
-        function updatePagination(totalFiltered) {
-            const totalPages = Math.ceil(totalFiltered / rowsPerPage);
-            const from = (currentPage - 1) * rowsPerPage + 1;
-            const to = Math.min(currentPage * rowsPerPage, totalFiltered);
-
-            document.getElementById('pageInfo').textContent = 
-                `Showing ${from}-${to} of ${totalFiltered.toLocaleString()} (Page ${currentPage} of ${totalPages})`;
-
-            document.getElementById('prevBtn').disabled = currentPage === 1;
-            document.getElementById('nextBtn').disabled = currentPage >= totalPages;
-        }
-
-        function applyFilters() {
-            currentPage = 1;
-            loadInventory();
-        }
-
-        function resetFilters() {
-            document.getElementById('searchInput').value = '';
-            document.getElementById('countryFilter').value = '';
-            document.getElementById('stateFilter').value = '';
-            document.getElementById('typeFilter').value = '';
-            document.getElementById('activeFilter').checked = true;
-            document.getElementById('availableFilter').checked = true;
-            currentPage = 1;
-            loadInventory();
-        }
-
-        function previousPage() {
-            if (currentPage > 1) {
-                currentPage--;
-                loadInventory();
-            }
-        }
-
-        function nextPage() {
-            const totalPages = Math.ceil(filteredCount / rowsPerPage);
-            if (currentPage < totalPages) {
-                currentPage++;
-                loadInventory();
-            }
-        }
-
-        function openAddModal() {
-            editingId = null;
-            document.getElementById('modalTitle').textContent = 'Add New Site';
-            document.getElementById('submitBtn').textContent = 'Add Site';
-            document.getElementById('addModal').style.display = 'flex';
-            const form = document.querySelector('form');
-            form.reset();
-            document.getElementById('activeStatus').value = 'true';
-            document.getElementById('availableStatus').value = 'true';
-        }
-
-        function closeModal() {
-            document.getElementById('addModal').style.display = 'none';
-        }
-
-        async function handleSubmit(event) {
-            event.preventDefault();
-
-            const data = {
-                inventory_uuid: editingId || 'INV-' + Date.now(),
-                board_name: document.getElementById('boardName').value,
-                display_name: document.getElementById('displayName').value,
-                reference_id: document.getElementById('referenceId').value,
-                country: document.getElementById('country').value,
-                state: document.getElementById('state').value,
-                district: document.getElementById('district').value,
-                address: document.getElementById('address').value,
-                billboard_type: document.getElementById('billboardType').value,
-                selling_standard_rate: parseFloat(document.getElementById('standardRate').value) || null,
-                selling_monthly_rate: parseFloat(document.getElementById('monthlyRate').value) || null,
-                no_of_screens: parseInt(document.getElementById('noOfScreens').value) || null,
-                active: document.getElementById('activeStatus').value === 'true',
-                available: document.getElementById('availableStatus').value === 'true'
-            };
-
-            const { error } = await supabase
-                .from('inventory_production')
-                .insert([data]);
-
-            if (!error) {
-                alert('Site added successfully!');
-                closeModal();
-                loadStats();
-                loadInventory();
-            } else {
-                alert('Error: ' + error.message);
-            }
-        }
-
-        async function toggleStatus(uuid, currentStatus, boardName) {
-            const newStatus = !currentStatus;
-            const statusText = newStatus ? 'Active' : 'Inactive';
-            
-            if (!confirm(`Change "${boardName}" to ${statusText}?`)) return;
-            
-            try {
-                const { data, error } = await supabase
-                    .from('inventory_production')
-                    .update({ active: newStatus })
-                    .eq('inventory_uuid', uuid)
-                    .select();
-
-                if (error) {
-                    console.error('Toggle error:', error);
-                    alert('Error updating status: ' + error.message);
-                } else if (data && data.length > 0) {
-                    alert(`Successfully changed to ${statusText}!`);
-                    await loadStats();
-                    await loadInventory();
-                } else {
-                    alert('No rows updated. Item may not exist.');
-                }
-            } catch (err) {
-                console.error('Exception:', err);
-                alert('Error: ' + err.message);
-            }
-        }
-
-        async function deleteItem(uuid, name) {
-            if (!confirm(`Delete ${name}?`)) return;
-
-            const { error } = await supabase
-                .from('inventory_production')
-                .delete()
-                .eq('inventory_uuid', uuid);
-
-            if (!error) {
-                alert('Deleted successfully');
-                loadStats();
-                loadInventory();
-            }
-        }
-
-        function handleFileUpload(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = async function(e) {
-                const text = e.target.result;
-                const lines = text.split('\n');
-                const headers = lines[0].split(',').map(h => h.trim());
-                
-                const items = [];
-                for (let i = 1; i < lines.length; i++) {
-                    if (!lines[i].trim()) continue;
-                    
-                    const values = lines[i].split(',').map(v => v.trim());
-                    const item = {
-                        inventory_uuid: values[0] || 'INV-' + Date.now() + '-' + i,
-                        board_name: values[1] || '',
-                        display_name: values[2] || values[1] || '',
-                        reference_id: values[3] || '',
-                        country: values[4] || '',
-                        state: values[5] || '',
-                        district: values[6] || '',
-                        address: values[7] || '',
-                        latitude: values[8] ? parseFloat(values[8]) : null,
-                        longitude: values[9] ? parseFloat(values[9]) : null,
-                        gps_coordinates: values[10] || '',
-                        media_owner: values[11] || '',
-                        active: values[12] === 'true' || values[12] === '1' || values[12] === 'TRUE',
-                        available: values[13] === 'true' || values[13] === '1' || values[13] === 'TRUE',
-                        billboard_type: values[14] || '',
-                        board_format: values[15] || '',
-                        images: values[16] || '',
-                        selling_standard_rate: values[17] ? parseFloat(values[17]) : null,
-                        selling_monthly_rate: values[18] ? parseFloat(values[18]) : null,
-                        no_of_screens: values[19] ? parseInt(values[19]) : null,
-                        resolution: values[20] || '',
-                        programmatic_enabled: values[21] || 'No',
-                        exposure_to_dsp: values[22] || 'No'
-                    };
-                    items.push(item);
-                }
-
-                if (items.length === 0) {
-                    alert('No valid data found in CSV');
-                    return;
-                }
-
-                if (!confirm(`Upload ${items.length} items from CSV?`)) return;
-
-                // Upload in batches of 100
-                const batchSize = 100;
-                let uploaded = 0;
-
-                for (let i = 0; i < items.length; i += batchSize) {
-                    const batch = items.slice(i, i + batchSize);
-                    const { error } = await supabase
-                        .from('inventory_production')
-                        .insert(batch);
-
-                    if (error) {
-                        alert(`Error uploading batch: ${error.message}`);
-                        break;
-                    }
-                    uploaded += batch.length;
-                }
-
-                alert(`Successfully uploaded ${uploaded} items!`);
-                document.getElementById('csvFile').value = '';
-                loadStats();
-                loadInventory();
-            };
-            reader.readAsText(file);
-        }
-
-        function downloadCSVTemplate() {
-            const template = `inventory_uuid,board_name,display_name,reference_id,country,state,district,address,latitude,longitude,gps_coordinates,media_owner,active,available,billboard_type,board_format,images,selling_standard_rate,selling_monthly_rate,no_of_screens,resolution,programmatic_enabled,exposure_to_dsp
-INV-SAMPLE-001,Downtown Billboard,Main Street Digital,REF-001,USA,California,Los Angeles,123 Main St,34.0522,-118.2437,"34.0522,-118.2437",ABC Media,true,true,Digital,Landscape,https://example.com/img.jpg,5000,15000,1,1920x1080,Yes,Yes`;
-
-            const blob = new Blob([template], { type: 'text/csv' });
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'inventory_template.csv';
-            a.click();
-            window.URL.revokeObjectURL(url);
-        }
-
-        function showAPIInfo() {
-            document.getElementById('apiInfo').style.display = 'block';
-            document.getElementById('apiInfo').scrollIntoView({ behavior: 'smooth' });
-        }
-
-        function hideAPIInfo() {
-            document.getElementById('apiInfo').style.display = 'none';
-        }
-    </script>
+    // expose some to window (optional)
+    window.applyFilters=applyFilters; window.resetFilters=resetFilters; window.exportCurrentView=exportCurrentView;
+    window.openAddModal=openAddModal; window.closeModal=closeModal;
+    window.toggleStatus=toggleStatus; window.deleteItem=deleteItem;
+    window.firstPage=firstPage; window.previousPage=previousPage; window.nextPage=nextPage; window.lastPage=lastPage;
+    window.downloadCSVTemplate=downloadCSVTemplate; window.syncNow=syncNow;
+    window.setView=setView; window.setTab=setTab; window.handleLogin=handleLogin; window.handleLogout=handleLogout;
+  </script>
 </body>
 </html>
-
-02/10/2025
