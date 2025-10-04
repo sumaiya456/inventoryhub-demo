@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!DOCTYPE html> 
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -133,6 +133,26 @@
     .map-legend h4{font-size:13px;font-weight:800;margin-bottom:8px;text-transform:uppercase;color:#374151}
     .map-legend-item{display:flex;align-items:center;gap:8px;margin:6px 0;font-size:13px}
     .map-legend-item .dot{width:12px;height:12px;border-radius:999px;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.1)}
+
+    /* ====== Calendar / Bookings ====== */
+    .calendar-container{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:16px;margin-top:12px}
+    .calendar-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;margin-top:12px}
+    .calendar-day{aspect-ratio:1;display:flex;align-items:center;justify-content:center;border-radius:8px;font-size:14px;cursor:pointer;position:relative}
+    .calendar-day.header{font-weight:800;cursor:default;color:#6b7280;font-size:12px}
+    .calendar-day.disabled{color:#d1d5db;cursor:not-allowed}
+    .calendar-day.today{border:2px solid var(--primary)}
+    .calendar-day.booked{background:#fee2e2;color:#991b1b}
+    .calendar-day.available{background:#d1fae5;color:#065f46}
+    .calendar-day:hover:not(.header):not(.disabled){background:#f3f4f6}
+    .booking-list{margin-top:16px}
+    .booking-card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:12px;margin-bottom:10px}
+    .booking-card h4{margin-bottom:6px;font-size:15px}
+    .booking-card .meta{font-size:13px;color:#6b7280;margin:4px 0}
+    .booking-status{display:inline-block;padding:4px 8px;border-radius:6px;font-size:11px;font-weight:800;text-transform:uppercase}
+    .booking-status.pending{background:#fef3c7;color:#92400e}
+    .booking-status.confirmed{background:#d1fae5;color:#065f46}
+    .booking-status.completed{background:#e0e7ff;color:#3730a3}
+    .booking-status.cancelled{background:#fee2e2;color:#991b1b}
   </style>
 </head>
 <body>
@@ -174,6 +194,7 @@
       <button id="tab-dashboard" class="tab" role="tab" aria-selected="true" onclick="setTab('dashboard')">Dashboard</button>
       <button id="tab-inventory" class="tab" role="tab" aria-selected="false" onclick="setTab('inventory')">Inventory</button>
       <button id="tab-map" class="tab" role="tab" aria-selected="false" onclick="setTab('map')">Map View</button>
+      <!-- Bookings tab removed -->
     </div>
 
     <!-- Panes -->
@@ -318,6 +339,49 @@
         </div>
         <button id="submitBtn" class="btn btn-primary" type="submit">Add Site</button>
       </form>
+    </div>
+  </div>
+
+  <!-- Billboard Bookings Modal -->
+  <div id="billboardBookingsModal" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:900;padding:16px;overflow-y:auto">
+    <div class="pane" style="max-width:800px;width:100%;background:#fff;border-radius:14px;max-height:90vh;overflow-y:auto">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;position:sticky;top:0;background:#fff;padding-bottom:10px;border-bottom:1px solid #e5e7eb">
+        <h2 id="billboardBookingsTitle">Billboard Bookings</h2>
+        <button class="btn btn-secondary btn-sm" onclick="closeBillboardBookings()">Close</button>
+      </div>
+      
+      <div style="margin-bottom:16px">
+        <button class="btn btn-primary" onclick="openNewBookingForm()">+ New Booking</button>
+      </div>
+
+      <!-- New Booking Form (hidden initially) -->
+      <div id="newBookingForm" class="hidden" style="background:#f9fafb;padding:16px;border-radius:10px;margin-bottom:16px">
+        <h3 style="margin-bottom:12px;font-size:16px">Create New Booking</h3>
+        <form onsubmit="handleBookingSubmit(event)">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div class="form-group"><label for="bookingStartDate">Start Date *</label><input id="bookingStartDate" type="date" required></div>
+            <div class="form-group"><label for="bookingEndDate">End Date *</label><input id="bookingEndDate" type="date" required></div>
+          </div>
+          <div class="form-group"><label for="bookingClient">Client Name</label><input id="bookingClient"></div>
+          <div class="form-group"><label for="bookingCampaign">Campaign Name</label><input id="bookingCampaign"></div>
+          <div class="form-group"><label for="bookingStatus">Status</label>
+            <select id="bookingStatus">
+              <option value="pending">Pending</option>
+              <option value="confirmed">Confirmed</option>
+              <option value="completed">Completed</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
+          </div>
+          <div class="form-group"><label for="bookingNotes">Notes</label><textarea id="bookingNotes" rows="2" style="width:100%;padding:10px;border:2px solid #e5e7eb;border-radius:8px"></textarea></div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-primary" type="submit">Create Booking</button>
+            <button class="btn btn-secondary" type="button" onclick="cancelNewBooking()">Cancel</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Bookings List -->
+      <div id="billboardBookingsList"></div>
     </div>
   </div>
 
@@ -492,6 +556,7 @@
             ${item.available?'<span class="badge badge-available">Available</span>':''}
           </td>
           <td>
+            <button class="btn btn-sm btn-secondary" onclick="openBillboardBookings('${escapeHtml(item.inventory_uuid)}', '${escapeHtml(item.board_name||'')}')">Bookings</button>
             <button class="btn btn-sm btn-primary" onclick="toggleStatus('${escapeHtml(item.inventory_uuid)}', ${!!item.active}, '${escapeHtml(item.board_name||'')}')">${item.active?'Mark Inactive':'Mark Active'}</button>
             <button class="btn btn-sm btn-danger" onclick="deleteItem('${escapeHtml(item.inventory_uuid)}', '${escapeHtml(item.board_name||'')}')">Delete</button>
           </td>`;
@@ -526,6 +591,7 @@
               <span style="color:#6b7280">/mo</span>
             </div>
             <div class="card-actions">
+              <button class="btn btn-sm btn-secondary" onclick="openBillboardBookings('${escapeHtml(item.inventory_uuid)}', '${escapeHtml(item.board_name||'Billboard')}')">Bookings</button>
               <button class="btn btn-sm btn-primary" onclick="toggleStatus('${escapeHtml(item.inventory_uuid)}', ${!!item.active}, '${escapeHtml(item.board_name||'')}')">${item.active?'Mark Inactive':'Mark Active'}</button>
               <button class="btn btn-sm btn-danger" onclick="deleteItem('${escapeHtml(item.inventory_uuid)}', '${escapeHtml(item.board_name||'')}')">Delete</button>
             </div>
@@ -735,6 +801,99 @@ INV-SAMPLE-001,Downtown Billboard,Main Street Digital,REF-001,USA,California,Los
       toast(`Showing ${data.length} billboards on map`);
     }
 
+    /* ====== Bookings ====== */
+    let currentBillboardForBooking = null;
+
+    function openBillboardBookings(inventoryUuid, boardName){
+      currentBillboardForBooking = inventoryUuid;
+      $("#billboardBookingsTitle").textContent = `Bookings: ${boardName}`;
+      show($("#billboardBookingsModal"));
+      hide($("#newBookingForm"));
+      loadBillboardBookings();
+    }
+
+    function closeBillboardBookings(){
+      hide($("#billboardBookingsModal"));
+      currentBillboardForBooking = null;
+    }
+
+    function openNewBookingForm(){
+      show($("#newBookingForm"));
+      const today = new Date().toISOString().split('T')[0];
+      $("#bookingStartDate").value = today;
+      const nextWeek = new Date(Date.now() + 7*24*60*60*1000).toISOString().split('T')[0];
+      $("#bookingEndDate").value = nextWeek;
+    }
+
+    function cancelNewBooking(){
+      hide($("#newBookingForm"));
+      $("#newBookingForm form").reset();
+    }
+
+    async function loadBillboardBookings(){
+      if(!currentBillboardForBooking) return;
+      
+      const {data, error} = await supabase
+        .from('bookings')
+        .select('*')
+        .eq('inventory_uuid', currentBillboardForBooking)
+        .order('start_date', {ascending: false});
+      
+      if(error){ toast('Failed to load bookings', 'error'); return; }
+      
+      const list = $("#billboardBookingsList");
+      if(!data || data.length === 0){
+        list.innerHTML = '<p style="color:#6b7280;padding:20px;text-align:center;background:#f9fafb;border-radius:8px">No bookings yet. Click "New Booking" to create one.</p>';
+        return;
+      }
+      
+      list.innerHTML = data.map(b => `
+        <div class="booking-card">
+          <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:8px">
+            <h4 style="margin:0">${escapeHtml(b.campaign_name || 'Booking')}</h4>
+            <span class="booking-status ${b.status}">${b.status}</span>
+          </div>
+          <div class="meta">📅 <strong>${b.start_date}</strong> to <strong>${b.end_date}</strong></div>
+          <div class="meta">👤 Client: ${escapeHtml(b.client_name || 'Not specified')}</div>
+          ${b.notes ? `<div class="meta" style="margin-top:6px;padding:8px;background:#f9fafb;border-radius:6px">📝 ${escapeHtml(b.notes)}</div>` : ''}
+          <div style="margin-top:10px;display:flex;gap:6px">
+            <button class="btn btn-sm btn-danger" onclick="deleteBooking('${b.id}')">Delete</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    async function handleBookingSubmit(e){
+      e.preventDefault();
+      
+      const booking = {
+        inventory_uuid: currentBillboardForBooking,
+        organization_id: currentUser.organizationId,
+        start_date: $("#bookingStartDate").value,
+        end_date: $("#bookingEndDate").value,
+        client_name: $("#bookingClient").value,
+        campaign_name: $("#bookingCampaign").value,
+        status: $("#bookingStatus").value,
+        notes: $("#bookingNotes").value,
+        created_by: currentUser.id
+      };
+      
+      const {error} = await supabase.from('bookings').insert([booking]);
+      if(error){ toast(error.message, 'error'); return; }
+      
+      toast('Booking created successfully');
+      cancelNewBooking();
+      loadBillboardBookings();
+    }
+
+    async function deleteBooking(id){
+      if(!confirm('Delete this booking? This cannot be undone.')) return;
+      const {error} = await supabase.from('bookings').delete().eq('id', id);
+      if(error){ toast('Delete failed', 'error'); return; }
+      toast('Booking deleted');
+      loadBillboardBookings();
+    }
+
     /* ====== Misc ====== */
     function syncNow(){ loadStats(); loadInventory(); toast('Synced'); }
 
@@ -744,13 +903,21 @@ INV-SAMPLE-001,Downtown Billboard,Main Street Digital,REF-001,USA,California,Los
       const savedPage=parseInt(sessionStorage.getItem('page')||'1',10); if(!isNaN(savedPage)) currentPage=savedPage;
     });
 
-    // expose some to window (optional)
+    // expose to window
     window.applyFilters=applyFilters; window.resetFilters=resetFilters; window.exportCurrentView=exportCurrentView;
     window.openAddModal=openAddModal; window.closeModal=closeModal;
     window.toggleStatus=toggleStatus; window.deleteItem=deleteItem;
     window.firstPage=firstPage; window.previousPage=previousPage; window.nextPage=nextPage; window.lastPage=lastPage;
     window.downloadCSVTemplate=downloadCSVTemplate; window.syncNow=syncNow;
     window.setView=setView; window.setTab=setTab; window.handleLogin=handleLogin; window.handleLogout=handleLogout;
+
+    // bookings
+    window.openBillboardBookings=openBillboardBookings;
+    window.closeBillboardBookings=closeBillboardBookings;
+    window.openNewBookingForm=openNewBookingForm;
+    window.cancelNewBooking=cancelNewBooking;
+    window.handleBookingSubmit=handleBookingSubmit;
+    window.deleteBooking=deleteBooking;
   </script>
 </body>
 </html>
