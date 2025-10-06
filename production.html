@@ -1,10 +1,13 @@
-<!DOCTYPE html> 
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>InventoryHub - Production System</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- Papa Parse (CSV parser) -->
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Leaflet (Map) -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -90,7 +93,7 @@
     th{padding:14px;text-align:left;font-size:12px;text-transform:uppercase;letter-spacing:.04em}
     td{padding:12px 14px;border-bottom:1px solid #f1f5f9}
     tbody tr:hover{background:#f8f9ff}
-    .price{font-weight:800;color:var(--ok)}
+    .price{font-weight:800;color:#10b981}
     .badge{display:inline-block;padding:4px 10px;border-radius:12px;font-size:11px;font-weight:800}
     .badge-active{background:#d1fae5;color:#065f46}
     .badge-inactive{background:#fee2e2;color:#991b1b}
@@ -135,16 +138,6 @@
     .map-legend-item .dot{width:12px;height:12px;border-radius:999px;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.1)}
 
     /* ====== Calendar / Bookings ====== */
-    .calendar-container{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:16px;margin-top:12px}
-    .calendar-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;margin-top:12px}
-    .calendar-day{aspect-ratio:1;display:flex;align-items:center;justify-content:center;border-radius:8px;font-size:14px;cursor:pointer;position:relative}
-    .calendar-day.header{font-weight:800;cursor:default;color:#6b7280;font-size:12px}
-    .calendar-day.disabled{color:#d1d5db;cursor:not-allowed}
-    .calendar-day.today{border:2px solid var(--primary)}
-    .calendar-day.booked{background:#fee2e2;color:#991b1b}
-    .calendar-day.available{background:#d1fae5;color:#065f46}
-    .calendar-day:hover:not(.header):not(.disabled){background:#f3f4f6}
-    .booking-list{margin-top:16px}
     .booking-card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:12px;margin-bottom:10px}
     .booking-card h4{margin-bottom:6px;font-size:15px}
     .booking-card .meta{font-size:13px;color:#6b7280;margin:4px 0}
@@ -153,21 +146,47 @@
     .booking-status.confirmed{background:#d1fae5;color:#065f46}
     .booking-status.completed{background:#e0e7ff;color:#3730a3}
     .booking-status.cancelled{background:#fee2e2;color:#991b1b}
+
+    /* Bulk Actions */
+    .bulk-bar{background:#fff;border:1px solid #e7eaf3;border-radius:10px;padding:12px 16px;margin-bottom:12px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+    .bulk-bar.hidden{display:none}
+    .checkbox-cell{width:40px;text-align:center}
+    .checkbox-cell input[type="checkbox"]{width:18px;height:18px;cursor:pointer}
+    .preset-filters{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+    .preset-filter{padding:8px 12px;background:#fff;border:2px solid #e5e7eb;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;transition:all .2s}
+    .preset-filter:hover{border-color:#c7d2fe;background:#f8f9ff}
+    .preset-filter.active{border-color:var(--primary);background:#eef2ff;color:var(--primary)}
+    .search-highlight{background:#fef08a;padding:2px 4px;border-radius:3px}
+
+    /* spinner keyframes */
+    @keyframes spin{to{transform:rotate(360deg)}}
   </style>
 </head>
 <body>
   <!-- Toast -->
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <div id="loadingOverlay" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;z-index:1000">
+    <div style="background:#fff;padding:24px;border-radius:12px;box-shadow:0 10px 40px rgba(0,0,0,0.2)">
+      <div style="width:40px;height:40px;border:4px solid #e5e7eb;border-top-color:#667eea;border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto"></div>
+      <div style="margin-top:12px;color:#6b7280;font-weight:600">Processing...</div>
+    </div>
+  </div>
 
   <!-- ====== Login ====== -->
   <div id="loginScreen" class="login-container">
     <div class="login-box">
       <h1>InventoryHub</h1>
-      <p>Billboard Inventory Management System</p>
-      <form onsubmit="handleLogin(event)">
-        <div class="form-group"><label>Email Address</label><input type="email" id="loginEmail" required placeholder="you@company.com"/></div>
-        <div class="form-group"><label>Password</label><input type="password" id="loginPassword" required placeholder="••••••••"/></div>
-        <button class="login-btn" type="submit">Login</button>
+      <p>Sign in to manage your billboards.</p>
+      <form onsubmit="handleLogin(event)" novalidate>
+        <div class="form-group">
+          <label for="loginEmail">Email</label>
+          <input id="loginEmail" type="email" placeholder="you@example.com" required />
+        </div>
+        <div class="form-group">
+          <label for="loginPassword">Password</label>
+          <input id="loginPassword" type="password" placeholder="********" required />
+        </div>
+        <button class="login-btn" type="submit">Sign In</button>
       </form>
       <div class="demo-note"><strong>Note:</strong> This screen uses real Supabase authentication.</div>
     </div>
@@ -194,29 +213,197 @@
       <button id="tab-dashboard" class="tab" role="tab" aria-selected="true" onclick="setTab('dashboard')">Dashboard</button>
       <button id="tab-inventory" class="tab" role="tab" aria-selected="false" onclick="setTab('inventory')">Inventory</button>
       <button id="tab-map" class="tab" role="tab" aria-selected="false" onclick="setTab('map')">Map View</button>
-      <!-- Bookings tab removed -->
     </div>
 
     <!-- Panes -->
     <div class="tabpanes">
       <!-- Dashboard Pane -->
       <section id="pane-dashboard" class="pane" role="tabpanel" aria-labelledby="tab-dashboard">
+        <!-- Analytics Section on Dashboard -->
+        <div id="dashboardAnalytics" class="filterbox hidden" style="margin-top:12px">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:16px">
+            <h3 style="font-size:16px;margin:0;font-weight:700">📊 Revenue Analytics</h3>
+            <select id="analyticsTimeRange" style="padding:8px 12px;border:2px solid #e5e7eb;border-radius:8px;font-size:13px;font-weight:600;align-self:center">
+              <option value="6">Last 6 Months</option>
+              <option value="3">Last 3 Months</option>
+              <option value="12">Last 12 Months</option>
+            </select>
+          </div>
+          <!-- KPIs Row -->
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px">
+            <div style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);border-radius:12px;padding:16px;color:#fff">
+              <div style="font-size:11px;text-transform:uppercase;font-weight:700;opacity:0.9;margin-bottom:6px">Revenue MTD</div>
+              <div style="font-size:28px;font-weight:800" id="analyticsRevenueMTD">$0</div>
+              <div style="font-size:11px;opacity:0.9;margin-top:4px" id="analyticsRevenueTrend">-</div>
+            </div>
+            <div style="background:#fff;border:2px solid #eef2ff;border-radius:12px;padding:16px">
+              <div style="font-size:11px;text-transform:uppercase;color:#6b7280;font-weight:700;margin-bottom:6px">Occupancy Rate</div>
+              <div style="font-size:28px;font-weight:800;color:#111827" id="analyticsOccupancy">0%</div>
+              <div style="font-size:11px;color:#6b7280;margin-top:4px" id="analyticsOccupancyDetail">-</div>
+            </div>
+            <div style="background:#fff;border:2px solid #eef2ff;border-radius:12px;padding:16px">
+              <div style="font-size:11px;text-transform:uppercase;color:#6b7280;font-weight:700;margin-bottom:6px">Avg Per Billboard</div>
+              <div style="font-size:28px;font-weight:800;color:#10b981" id="analyticsAvgRevenue">$0</div>
+              <div style="font-size:11px;color:#6b7280;margin-top:4px">monthly rate</div>
+            </div>
+          </div>
+          <!-- Charts Row -->
+          <div style="display:grid;grid-template-columns:2fr 1fr;gap:12px">
+            <div style="background:#fff;border:2px solid #eef2ff;border-radius:12px;padding:16px">
+              <div style="font-size:13px;font-weight:700;color:#374151;margin-bottom:12px">Revenue Trend</div>
+              <div style="height:180px;width:100%">
+                <canvas id="revenueChart" style="width:100%;height:100%"></canvas>
+              </div>
+            </div>
+            <div style="background:#fff;border:2px solid #eef2ff;border-radius:12px;padding:16px">
+              <div style="font-size:13px;font-weight:700;color:#374151;margin-bottom:12px">Status</div>
+              <div style="height:180px;display:flex;align-items:center;justify-content:center;width:100%">
+                <canvas id="statusChart" style="width:100%;height:100%"></canvas>
+              </div>
+            </div>
+          </div>
+          <!-- Top Performers -->
+          <div style="background:#fff;border:2px solid #eef2ff;border-radius:12px;padding:16px;margin-top:12px">
+            <div style="font-size:13px;font-weight:700;color:#374151;margin-bottom:12px">Top Revenue Generators</div>
+            <div id="topBillboards"></div>
+          </div>
+        </div>
         <div class="stats">
-          <div class="stat"><span class="dot" aria-hidden="true"></span><div class="label">Total Billboards</div><div class="value" id="kpiTotal">-</div></div>
-          <div class="stat"><span class="dot" aria-hidden="true"></span><div class="label">Filtered Results</div><div class="value" id="kpiFiltered">-</div></div>
-          <div class="stat"><span class="dot" aria-hidden="true"></span><div class="label">Active Sites</div><div class="value" id="kpiActive">-</div></div>
-          <div class="stat"><span class="dot" aria-hidden="true"></span><div class="label">Countries</div><div class="value" id="kpiCountries">-</div></div>
+          <div class="stat">
+            <span class="dot" aria-hidden="true"></span>
+            <div class="label">Total Billboards</div>
+            <div class="value" id="kpiTotal">-</div>
+            <div id="kpiTotalTrend" style="font-size:12px;color:#10b981;margin-top:4px"></div>
+          </div>
+          <div class="stat">
+            <span class="dot" aria-hidden="true"></span>
+            <div class="label">Active Sites</div>
+            <div class="value" id="kpiActive">-</div>
+            <div id="kpiActivePct" style="font-size:12px;color:#6b7280;margin-top:4px"></div>
+          </div>
+          <div class="stat">
+            <span class="dot" aria-hidden="true"></span>
+            <div class="label">Current Bookings</div>
+            <div class="value" id="kpiCurrentBookings">-</div>
+            <div id="kpiBookingsPct" style="font-size:12px;color:#6b7280;margin-top:4px"></div>
+          </div>
+          <div class="stat">
+            <span class="dot" aria-hidden="true"></span>
+            <div class="label">Countries</div>
+            <div class="value" id="kpiCountries">-</div>
+            <div id="kpiStates" style="font-size:12px;color:#6b7280;margin-top:4px"></div>
+          </div>
         </div>
 
-        <div class="filterbox" style="margin-top:14px">
-          <p style="color:#475569">Welcome! Use the <strong>Inventory</strong> tab to manage billboards, or open <strong>Map View</strong> to visualize locations.</p>
+        <!-- Quick Actions -->
+        <div class="filterbox" style="margin-top:20px">
+          <h3 style="margin-bottom:12px;font-size:16px">Quick Actions</h3>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px">
+            <button class="btn btn-primary" onclick="setTab('inventory');setTimeout(()=>openAddModal(),100)" style="padding:14px">➕ Add New Billboard</button>
+            <button class="btn btn-secondary" onclick="setTab('inventory')" style="padding:14px">📋 View All Inventory</button>
+            <button class="btn btn-secondary" onclick="setTab('map')" style="padding:14px">🗺️ Open Map View</button>
+            <button class="btn btn-success" onclick="document.getElementById('csvFile').click()" style="padding:14px">📤 Bulk Upload</button>
+          </div>
+        </div>
+
+        <!-- Recent Bookings -->
+        <div class="filterbox" style="margin-top:20px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+            <h3 style="font-size:16px;margin:0">Recent Bookings</h3>
+            <button class="btn btn-sm btn-secondary" onclick="loadDashboard()">Refresh</button>
+          </div>
+          <div id="dashboardRecentBookings">
+            <div style="color:#6b7280;padding:20px;text-align:center">Loading...</div>
+          </div>
+        </div>
+
+        <!-- Alerts -->
+        <div id="dashboardAlerts" class="filterbox" style="margin-top:20px;display:none">
+          <h3 style="margin-bottom:12px;font-size:16px;color:#f59e0b">⚠️ Alerts</h3>
+          <div id="dashboardAlertsList"></div>
         </div>
       </section>
 
+              <!-- Analytics Section on Dashboard -->
+
+                <div id="dashboardAnalytics" class="filterbox hidden" style="margin-top:20px">
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+                    <h3 style="font-size:16px;margin:0;font-weight:700">📊 Revenue Analytics</h3>
+                    <select id="analyticsTimeRange" style="padding:8px 12px;border:2px solid #e5e7eb;border-radius:8px;font-size:13px;font-weight:600">
+                      <option value="6">Last 6 Months</option>
+                      <option value="3">Last 3 Months</option>
+                      <option value="12">Last 12 Months</option>
+                    </select>
+                  </div>
+                  
+                  <!-- KPIs Row -->
+                  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px">
+                    <div style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);border-radius:12px;padding:16px;color:#fff">
+                      <div style="font-size:11px;text-transform:uppercase;font-weight:700;opacity:0.9;margin-bottom:6px">Revenue MTD</div>
+                      <div style="font-size:28px;font-weight:800" id="analyticsRevenueMTD">$0</div>
+                      <div style="font-size:11px;opacity:0.9;margin-top:4px" id="analyticsRevenueTrend">-</div>
+                    </div>
+                    
+                    <div style="background:#fff;border:2px solid #eef2ff;border-radius:12px;padding:16px">
+                      <div style="font-size:11px;text-transform:uppercase;color:#6b7280;font-weight:700;margin-bottom:6px">Occupancy Rate</div>
+                      <div style="font-size:28px;font-weight:800;color:#111827" id="analyticsOccupancy">0%</div>
+                      <div style="font-size:11px;color:#6b7280;margin-top:4px" id="analyticsOccupancyDetail">-</div>
+                    </div>
+                    
+                    <div style="background:#fff;border:2px solid #eef2ff;border-radius:12px;padding:16px">
+                      <div style="font-size:11px;text-transform:uppercase;color:#6b7280;font-weight:700;margin-bottom:6px">Avg Per Billboard</div>
+                      <div style="font-size:28px;font-weight:800;color:#10b981" id="analyticsAvgRevenue">$0</div>
+                      <div style="font-size:11px;color:#6b7280;margin-top:4px">monthly rate</div>
+                    </div>
+                  </div>
+
+                  <!-- Charts Row -->
+                  <div style="display:grid;grid-template-columns:2fr 1fr;gap:12px">
+                    <div style="background:#fff;border:2px solid #eef2ff;border-radius:12px;padding:16px">
+                      <div style="font-size:13px;font-weight:700;color:#374151;margin-bottom:12px">Revenue Trend</div>
+                      <div style="height:180px">
+                        <canvas id="revenueChart"></canvas>
+                      </div>
+                    </div>
+
+                    <div style="background:#fff;border:2px solid #eef2ff;border-radius:12px;padding:16px">
+                      <div style="font-size:13px;font-weight:700;color:#374151;margin-bottom:12px">Status</div>
+                      <div style="height:180px;display:flex;align-items:center;justify-content:center">
+                        <canvas id="statusChart"></canvas>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Top Performers -->
+                  <div style="background:#fff;border:2px solid #eef2ff;border-radius:12px;padding:16px;margin-top:12px">
+                    <div style="font-size:13px;font-weight:700;color:#374151;margin-bottom:12px">Top Revenue Generators</div>
+                    <div id="topBillboards"></div>
+                  </div>
+                </div>
+
       <!-- Inventory Pane -->
       <section id="pane-inventory" class="pane hidden" role="tabpanel" aria-labelledby="tab-inventory">
-        <div class="filterbox">
-          <div class="filter-grid">
+        <div class="filterbox" style="margin-bottom:16px">
+          <!-- Preset Filters -->
+          <div class="preset-filters" style="margin-bottom:10px">
+            <button class="preset-filter" onclick="applyPresetFilter('all')">All</button>
+            <button class="preset-filter" onclick="applyPresetFilter('available')">Available Only</button>
+            <button class="preset-filter" onclick="applyPresetFilter('active')">Active Only</button>
+            <button class="preset-filter" onclick="applyPresetFilter('inactive')">Inactive</button>
+            <button class="preset-filter" onclick="applyPresetFilter('booked')">Currently Booked</button>
+          </div>
+
+          <!-- Bulk Actions Bar -->
+          <div id="bulkBar" class="bulk-bar hidden" style="margin-bottom:10px">
+            <span id="bulkCount" style="font-weight:600;color:#374151">0 selected</span>
+            <button class="btn btn-sm btn-success" onclick="bulkExport()">Export Selected</button>
+            <button class="btn btn-sm btn-primary" onclick="bulkActivate()">Activate Selected</button>
+            <button class="btn btn-sm btn-secondary" onclick="bulkDeactivate()">Deactivate Selected</button>
+            <button class="btn btn-sm btn-danger" onclick="bulkDelete()">Delete Selected</button>
+            <button class="btn btn-sm btn-secondary" onclick="clearSelection()">Clear Selection</button>
+          </div>
+
+          <div class="filter-grid" style="margin-bottom:10px">
             <div>
               <label for="searchInput">Search</label>
               <input id="searchInput" type="text" placeholder="Board name, location...">
@@ -235,32 +422,35 @@
             </div>
           </div>
 
-          <div class="toggles">
+          <div class="toggles" style="margin-bottom:10px">
             <label><input type="checkbox" id="activeFilter" checked> Active Only</label>
             <label><input type="checkbox" id="availableFilter" checked> Available Only</label>
 
             <div class="actions">
               <button class="btn btn-primary" onclick="applyFilters()">Apply Filters</button>
               <button class="btn btn-secondary" onclick="resetFilters()">Reset</button>
-              <input id="csvFile" type="file" accept=".csv,.xlsx" onchange="handleFileUpload(event)" style="display:none">
+              <input id="csvFile" type="file" accept=".csv" onchange="handleFileUpload(event)" style="display:none">
               <button class="btn btn-secondary" onclick="downloadCSVTemplate()">Download Template</button>
               <button id="btnList" class="btn btn-secondary" aria-pressed="true" onclick="setView('list')">List</button>
               <button id="btnGrid" class="btn btn-secondary" aria-pressed="false" onclick="setView('grid')">Grid</button>
             </div>
           </div>
 
-          <div id="dropzone" class="dropzone" style="margin-top:10px">
+          <div id="dropzone" class="dropzone" style="margin-top:10px;margin-bottom:16px">
             <strong>Drop CSV here</strong> or
             <button class="btn btn-secondary" type="button" onclick="document.getElementById('csvFile').click()">Browse</button>
           </div>
         </div>
 
-        <div class="tablewrap" aria-live="polite">
+  <div class="tablewrap" aria-live="polite" style="margin-bottom:16px">
           <div id="loading" class="loading">Loading inventory...</div>
 
           <table id="inventoryTable" style="display:none">
             <thead>
             <tr>
+              <th scope="col" class="checkbox-cell">
+                <input type="checkbox" id="selectAll" title="Select all">
+              </th>
               <th scope="col">Board Name</th>
               <th scope="col">Location</th>
               <th scope="col">Country</th>
@@ -278,7 +468,7 @@
 
           <div id="inventoryGrid" class="grid hidden"></div>
 
-          <div id="pagination" class="pagination" style="display:none">
+          <div id="pagination" class="pagination" style="display:none;margin-top:8px">
             <div id="pageInfo" style="color:#64748b"></div>
             <div style="display:flex;gap:8px;align-items:center">
               <select id="rowsSelect" class="rows-select">
@@ -297,17 +487,17 @@
 
       <!-- Map Pane -->
       <section id="pane-map" class="pane hidden" role="tabpanel" aria-labelledby="tab-map">
-        <div class="filterbox">
+  <div class="filterbox" style="margin-bottom:16px">
           <h3 style="margin-bottom:6px">Map View</h3>
           <p style="color:#475569;margin-bottom:12px">Visualize billboard locations. Click markers for details.</p>
-          <div class="map-legend">
+          <div class="map-legend" style="margin-bottom:16px">
             <h4>Legend</h4>
             <div class="map-legend-item"><div class="dot" style="background:#10b981"></div><span>Active & Available</span></div>
             <div class="map-legend-item"><div class="dot" style="background:#f59e0b"></div><span>Active (Not Available)</span></div>
             <div class="map-legend-item"><div class="dot" style="background:#6b7280"></div><span>Inactive</span></div>
           </div>
         </div>
-        <div id="map"></div>
+  <div id="map" style="width:100%;margin-bottom:16px"></div>
       </section>
     </div>
   </div>
@@ -331,6 +521,8 @@
         <div class="form-group"><label for="standardRate">Standard Rate</label><input id="standardRate" type="number" step="0.01"></div>
         <div class="form-group"><label for="monthlyRate">Monthly Rate</label><input id="monthlyRate" type="number" step="0.01"></div>
         <div class="form-group"><label for="noOfScreens">Number of Screens</label><input id="noOfScreens" type="number"></div>
+        <div class="form-group"><label for="latitude">Latitude</label><input id="latitude" type="number" step="any" placeholder="e.g., 6.9271"></div>
+        <div class="form-group"><label for="longitude">Longitude</label><input id="longitude" type="number" step="any" placeholder="e.g., 79.8612"></div>
         <div class="form-group"><label for="activeStatus">Active Status</label>
           <select id="activeStatus"><option value="true">Active</option><option value="false">Inactive</option></select>
         </div>
@@ -398,14 +590,24 @@
     let viewMode='list'; // 'list' | 'grid'
     let map=null; // Leaflet map instance
     let markers=[]; // Map markers
+    let selectedBillboards = new Set(); // Track selected billboard UUIDs
+    let editingUuid = null; // edit state
+    let searchTimeout = null;
 
     /* ====== Utils ====== */
     const $=sel=>document.querySelector(sel);
     function show(el){el.classList.remove('hidden')}
     function hide(el){el.classList.add('hidden')}
     function toast(msg,type){const t=$("#toast");t.textContent=msg;t.className='toast'+(type==='error'?' error':'');requestAnimationFrame(()=>t.classList.add('show'));setTimeout(()=>t.classList.remove('show'),2400)}
-    function escapeHtml(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]))}
+    function escapeHtml(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[m]))}
     function fmt(n){return Number(n).toLocaleString()}
+    const toNum = v => { const n = parseFloat(String(v).replace(/[^0-9.\-]/g,'')); return isNaN(n) ? null : n; };
+    const toInt = v => { const n = parseInt(String(v).replace(/[^0-9\-]/g,''),10); return isNaN(n) ? null : n; };
+    const toBool = v => {
+      if (v === true || v === false) return v;
+      const s = String(v||'').trim().toLowerCase();
+      return ['true','1','yes','y'].includes(s) ? true : (['false','0','no','n'].includes(s) ? false : false);
+    };
 
     /* ====== Auth (REAL Supabase) ====== */
     async function handleLogin(e){
@@ -436,8 +638,8 @@
       $("#userInfo").textContent = `${currentUser.email} (${currentUser.organization.name})`;
       hide($("#loginScreen")); 
       show($("#app"));
-      loadStats(); 
-      loadInventory(); 
+      await loadDashboard();
+      await loadInventory();
       toast('Welcome!');
       setTab(sessionStorage.getItem('tab') || 'dashboard', true);
     }
@@ -453,6 +655,15 @@
     /* ====== Tabs ====== */
     function setTab(tab, initial=false){
       sessionStorage.setItem('tab', tab);
+      // Hide analytics when leaving dashboard
+      const analyticsSection = document.getElementById('dashboardAnalytics');
+      if(analyticsSection) {
+        if(tab === 'dashboard') {
+          analyticsSection.classList.remove('hidden');
+        } else {
+          analyticsSection.classList.add('hidden');
+        }
+      }
       ['dashboard','inventory','map'].forEach(t=>{
         document.getElementById(`pane-${t}`).classList.toggle('hidden', t!==tab);
         document.getElementById(`tab-${t}`).setAttribute('aria-selected', String(t===tab));
@@ -461,37 +672,156 @@
       if(!initial && tab==='map'){ initMap(); }
     }
 
-    /* ====== Stats ====== */
+    /* ====== Stats + Dashboard ====== */
     async function loadStats(){
-      const total = await supabase.from('inventory_production').select('*',{count:'exact',head:true});
-      totalCount = total.count||0; $("#kpiTotal").textContent=fmt(totalCount);
+      if(!currentUser) return;
 
-      const act = await supabase.from('inventory_production').select('*',{count:'exact',head:true}).eq('active',true);
-      $("#kpiActive").textContent=fmt(act.count||0);
+      const orgId = currentUser.organizationId;
 
-      const {data:countries} = await supabase.from('inventory_production').select('country');
+      const total = await supabase
+        .from('inventory_production')
+        .select('*',{count:'exact',head:true})
+        .eq('organization_id', orgId);
+      totalCount = total.count||0; 
+      $("#kpiTotal").textContent=fmt(totalCount);
+      $("#kpiTotalTrend").textContent=totalCount > 0 ? `${totalCount} billboard${totalCount !== 1 ? 's' : ''}` : '';
+
+      const act = await supabase
+        .from('inventory_production')
+        .select('*',{count:'exact',head:true})
+        .eq('active',true)
+        .eq('organization_id', orgId);
+      const activeCount = act.count||0;
+      $("#kpiActive").textContent=fmt(activeCount);
+      const activePct = totalCount > 0 ? Math.round((activeCount/totalCount)*100) : 0;
+      $("#kpiActivePct").textContent = `${activePct}% of total`;
+
+      const {data:countries} = await supabase
+        .from('inventory_production')
+        .select('country, state')
+        .eq('organization_id', orgId);
       const uniqueCountries=[...new Set((countries||[]).map(r=>r.country))].filter(Boolean).sort();
+      const uniqueStates=[...new Set((countries||[]).map(r=>r.state))].filter(Boolean).sort();
       $("#kpiCountries").textContent=uniqueCountries.length;
+      $("#kpiStates").textContent=`${uniqueStates.length} state${uniqueStates.length !== 1 ? 's' : ''}`;
 
       // Fill filters
       const countrySel=$("#countryFilter"); countrySel.innerHTML='<option value="">All Countries</option>';
       uniqueCountries.forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;countrySel.appendChild(o);});
 
-      const {data:types} = await supabase.from('inventory_production').select('billboard_type');
+      const {data:types} = await supabase
+        .from('inventory_production')
+        .select('billboard_type')
+        .eq('organization_id', orgId);
       const uniqueTypes=[...new Set((types||[]).map(r=>r.billboard_type))].filter(Boolean).sort();
       const typeSel=$("#typeFilter"); typeSel.innerHTML='<option value="">All Types</option>';
       uniqueTypes.forEach(t=>{const o=document.createElement('option');o.value=t;o.textContent=t;typeSel.appendChild(o);});
+
+      // Current bookings count for today
+      const today = new Date().toISOString().split('T')[0];
+      const {count: currentBookingsCount} = await supabase
+        .from('bookings')
+        .select('*', {count: 'exact', head: true})
+        .eq('organization_id', orgId)
+        .lte('start_date', today)
+        .gte('end_date', today);
+      $("#kpiCurrentBookings").textContent = fmt(currentBookingsCount || 0);
+      const bookingPct = totalCount > 0 ? Math.round(((currentBookingsCount||0)/totalCount)*100) : 0;
+      $("#kpiBookingsPct").textContent = `${bookingPct}% utilization`;
     }
 
-    $("#countryFilter").addEventListener('change', async e=>{
-      const country=e.target.value; const stateSel=$("#stateFilter");
-      stateSel.innerHTML='<option value="">All States</option>';
-      if(!country) return;
-      const {data:states}=await supabase.from('inventory_production').select('state').eq('country',country);
-      [...new Set((states||[]).map(r=>r.state))].filter(Boolean).sort().forEach(s=>{
-        const o=document.createElement('option');o.value=s;o.textContent=s;stateSel.appendChild(o);
-      });
-    });
+    async function loadDashboard(){
+      if(!currentUser) return;
+      await loadStats();
+
+      const orgId = currentUser.organizationId;
+
+      // Load recent bookings
+      const {data: recentBookings} = await supabase
+        .from('bookings')
+        .select('*, inventory_production(board_name)')
+        .eq('organization_id', orgId)
+        .order('created_at', {ascending: false})
+        .limit(5);
+      
+      const recentContainer = $("#dashboardRecentBookings");
+      if(!recentBookings || recentBookings.length === 0){
+        recentContainer.innerHTML = '<p style="color:#6b7280;padding:20px;text-align:center;background:#f9fafb;border-radius:8px">No bookings yet</p>';
+      } else {
+        recentContainer.innerHTML = recentBookings.map(b => `
+          <div style="padding:12px;border:1px solid #e5e7eb;border-radius:8px;margin-bottom:8px;background:#fff">
+            <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:4px">
+              <strong style="font-size:14px">${escapeHtml(b.inventory_production?.board_name || 'Billboard')}</strong>
+              <span class="booking-status ${b.status}">${b.status}</span>
+            </div>
+            <div style="font-size:13px;color:#6b7280">
+              ${escapeHtml(b.campaign_name || 'No campaign name')} • ${b.start_date} to ${b.end_date}
+            </div>
+            ${b.client_name ? `<div style="font-size:13px;color:#6b7280">Client: ${escapeHtml(b.client_name)}</div>` : ''}
+          </div>
+        `).join('');
+      }
+      
+      // Alerts
+      const alerts = [];
+      const today = new Date().toISOString().split('T')[0];
+      const nextWeek = new Date(Date.now() + 7*24*60*60*1000).toISOString().split('T')[0];
+
+      // Bookings ending soon
+      const {data: endingSoon} = await supabase
+        .from('bookings')
+        .select('*, inventory_production(board_name)')
+        .eq('organization_id', orgId)
+        .gte('end_date', today)
+        .lte('end_date', nextWeek)
+        .eq('status', 'confirmed');
+      
+      if(endingSoon && endingSoon.length > 0){
+        alerts.push({
+          type: 'warning',
+          message: `${endingSoon.length} booking${endingSoon.length !== 1 ? 's' : ''} ending within 7 days`,
+          details: endingSoon.map(b => `${b.inventory_production?.board_name} - ${b.end_date}`).join(', ')
+        });
+      }
+      
+      // Inactive billboards
+      const {count: inactiveCount} = await supabase
+        .from('inventory_production')
+        .select('*', {count: 'exact', head: true})
+        .eq('organization_id', orgId)
+        .eq('active', false);
+      
+      if(inactiveCount > 0){
+        alerts.push({
+          type: 'info',
+          message: `${inactiveCount} inactive billboard${inactiveCount !== 1 ? 's' : ''}`,
+          details: 'Consider activating them to increase availability'
+        });
+      }
+      
+      const alertsContainer = $("#dashboardAlerts");
+      const alertsList = $("#dashboardAlertsList");
+      if(alerts.length > 0){
+        show(alertsContainer);
+        alertsList.innerHTML = alerts.map(a => `
+          <div style="padding:12px;background:${a.type === 'warning' ? '#fef3c7' : '#dbeafe'};border-radius:8px;margin-bottom:8px">
+            <div style="font-weight:600;margin-bottom:4px">${a.message}</div>
+            <div style="font-size:13px;color:#6b7280">${a.details}</div>
+          </div>
+        `).join('');
+      } else {
+        hide(alertsContainer);
+      }
+        // Load analytics
+        await loadAnalytics();
+      // Show analytics section
+      const analyticsSection = document.getElementById('dashboardAnalytics');
+      if(analyticsSection) {
+        analyticsSection.classList.remove('hidden');
+      }
+      // Load analytics
+      await loadAnalytics();
+    }
 
     /* ====== Inventory ====== */
     function setView(mode){
@@ -509,8 +839,10 @@
     }
 
     async function loadInventory(){
+      if(!currentUser) return;
       showSkeletons();
-      let q=supabase.from('inventory_production').select('*',{count:'exact'});
+      const orgId = currentUser.organizationId;
+      let q=supabase.from('inventory_production').select('*',{count:'exact'}).eq('organization_id', orgId);
       const s=$("#searchInput").value.trim(); if(s) q=q.or(`board_name.ilike.%${s}%,display_name.ilike.%${s}%,address.ilike.%${s}%,reference_id.ilike.%${s}%,inventory_uuid.ilike.%${s}%`);
       const country=$("#countryFilter").value; if(country) q=q.eq('country',country);
       const state=$("#stateFilter").value; if(state) q=q.eq('state',state);
@@ -523,7 +855,7 @@
       $("#loading").style.display='none';
       if(error){toast(error.message,'error');return}
 
-      filteredCount=count||0; $("#kpiFiltered").textContent=fmt(filteredCount);
+      filteredCount=count||0; 
       lastData=data||[];
 
       displayTable(lastData);
@@ -538,11 +870,14 @@
       const tb=$("#inventoryBody"); tb.innerHTML='';
       if(items.length===0){
         $("#inventoryTable").style.display='table';
-        const tr=document.createElement('tr');const td=document.createElement('td');td.colSpan=10;td.innerHTML='<div class="loading">No inventory matches your filters.</div>';tr.appendChild(td);tb.appendChild(tr);return;
+        const tr=document.createElement('tr');const td=document.createElement('td');td.colSpan=11;td.innerHTML='<div class="loading">No inventory matches your filters.</div>';tr.appendChild(td);tb.appendChild(tr);return;
       }
       items.forEach(item=>{
         const row=document.createElement('tr');
         row.innerHTML=`
+          <td class="checkbox-cell">
+            <input type="checkbox" class="row-select" data-uuid="${escapeHtml(item.inventory_uuid)}" title="Select row">
+          </td>
           <td><strong>${escapeHtml(item.board_name||'-')}</strong></td>
           <td>${escapeHtml(item.address||'-')}</td>
           <td>${escapeHtml(item.country||'-')}</td>
@@ -556,12 +891,30 @@
             ${item.available?'<span class="badge badge-available">Available</span>':''}
           </td>
           <td>
-            <button class="btn btn-sm btn-secondary" onclick="openBillboardBookings('${escapeHtml(item.inventory_uuid)}', '${escapeHtml(item.board_name||'')}')">Bookings</button>
-            <button class="btn btn-sm btn-primary" onclick="toggleStatus('${escapeHtml(item.inventory_uuid)}', ${!!item.active}, '${escapeHtml(item.board_name||'')}')">${item.active?'Mark Inactive':'Mark Active'}</button>
-            <button class="btn btn-sm btn-danger" onclick="deleteItem('${escapeHtml(item.inventory_uuid)}', '${escapeHtml(item.board_name||'')}')">Delete</button>
+            <button class="btn btn-sm btn-secondary"
+              onclick="openBillboardBookings('${escapeHtml(item.inventory_uuid)}', '${escapeHtml(item.board_name||'')}')">Bookings</button>
+            <button class="btn btn-sm btn-primary"
+              onclick="openAddModal('${escapeHtml(item.inventory_uuid)}')">Edit</button>
+            <button class="btn btn-sm btn-secondary"
+              onclick="toggleStatus('${escapeHtml(item.inventory_uuid)}', ${!!item.active}, '${escapeHtml(item.board_name||'')}')">
+              ${item.active?'Deactivate':'Activate'}
+            </button>
+            <button class="btn btn-sm btn-danger"
+              onclick="deleteItem('${escapeHtml(item.inventory_uuid)}', '${escapeHtml(item.board_name||'')}')">Delete</button>
           </td>`;
         tb.appendChild(row);
       });
+      // Wire up row checkboxes & reflect selected state
+      document.querySelectorAll('.row-select').forEach(cb=>{
+        const uuid = cb.dataset.uuid;
+        cb.checked = selectedBillboards.has(uuid);
+        cb.addEventListener('change', e=> toggleSelect(uuid, cb.checked));
+      });
+      // Select-all checkbox behavior
+      const selectAll = $("#selectAll");
+      selectAll.onchange = (e)=> toggleSelectAll(e.target.checked);
+      selectAll.checked = lastData.length>0 && lastData.every(it=>selectedBillboards.has(it.inventory_uuid));
+
       $("#inventoryTable").style.display='table';
     }
 
@@ -591,9 +944,12 @@
               <span style="color:#6b7280">/mo</span>
             </div>
             <div class="card-actions">
-              <button class="btn btn-sm btn-secondary" onclick="openBillboardBookings('${escapeHtml(item.inventory_uuid)}', '${escapeHtml(item.board_name||'Billboard')}')">Bookings</button>
-              <button class="btn btn-sm btn-primary" onclick="toggleStatus('${escapeHtml(item.inventory_uuid)}', ${!!item.active}, '${escapeHtml(item.board_name||'')}')">${item.active?'Mark Inactive':'Mark Active'}</button>
-              <button class="btn btn-sm btn-danger" onclick="deleteItem('${escapeHtml(item.inventory_uuid)}', '${escapeHtml(item.board_name||'')}')">Delete</button>
+              <button class="btn btn-sm btn-secondary"
+                onclick="openBillboardBookings('${escapeHtml(item.inventory_uuid)}', '${escapeHtml(item.board_name||'Billboard')}')">Bookings</button>
+              <button class="btn btn-sm btn-primary"
+                onclick="openAddModal('${escapeHtml(item.inventory_uuid)}')">Edit</button>
+              <button class="btn btn-sm btn-danger"
+                onclick="deleteItem('${escapeHtml(item.inventory_uuid)}', '${escapeHtml(item.board_name||'')}')">Delete</button>
             </div>
           </div>`;
         grid.appendChild(card);
@@ -626,60 +982,147 @@
     function nextPage(){ const totalPages=Math.max(1,Math.ceil(filteredCount/rowsPerPage)); if(currentPage<totalPages){ currentPage++; loadInventory(); } }
     function lastPage(){ const totalPages=Math.max(1,Math.ceil(filteredCount/rowsPerPage)); if(currentPage!==totalPages){ currentPage=totalPages; loadInventory(); } }
 
-    $("#rowsSelect").addEventListener('change',e=>{ rowsPerPage=parseInt(e.target.value,10)||50; currentPage=1; loadInventory(); });
+    document.addEventListener('change', (e)=>{
+      if(e.target && e.target.id === 'rowsSelect'){
+        rowsPerPage=parseInt(e.target.value,10)||50; currentPage=1; loadInventory();
+      }
+    });
+
+    // Country → State cascade
+    document.addEventListener('change', async (e)=>{
+      if(e.target && e.target.id === 'countryFilter'){
+        const country=e.target.value; const stateSel=$("#stateFilter");
+        stateSel.innerHTML='<option value="">All States</option>';
+        if(!country) return;
+        const {data:states}=await supabase.from('inventory_production').select('state').eq('country',country).eq('organization_id', currentUser.organizationId);
+        [...new Set((states||[]).map(r=>r.state))].filter(Boolean).sort().forEach(s=>{
+          const o=document.createElement('option');o.value=s;o.textContent=s;stateSel.appendChild(o);
+        });
+      }
+    });
 
     /* ====== CRUD ====== */
-    function openAddModal(){
-      $("#modalTitle").textContent='Add New Site'; $("#submitBtn").textContent='Add Site';
-      const form=$("#addModal form"); form.reset(); $("#activeStatus").value='true'; $("#availableStatus").value='true';
-      show($("#addModal")); setTimeout(()=>$("#boardName").focus(),0);
+    function openAddModal(uuid = null){
+      editingUuid = uuid;
+      if(uuid){
+        // Edit mode
+        $("#modalTitle").textContent = 'Edit Billboard';
+        $("#submitBtn").textContent = 'Update Billboard';
+        const item = lastData.find(i => i.inventory_uuid === uuid);
+        if(!item) return toast('Billboard not found', 'error');
+        $("#boardName").value = item.board_name || '';
+        $("#displayName").value = item.display_name || '';
+        $("#referenceId").value = item.reference_id || '';
+        $("#country").value = item.country || '';
+        $("#state").value = item.state || '';
+        $("#district").value = item.district || '';
+        $("#address").value = item.address || '';
+        $("#billboardType").value = item.billboard_type || '';
+        $("#standardRate").value = item.selling_standard_rate || '';
+        $("#monthlyRate").value = item.selling_monthly_rate || '';
+        $("#noOfScreens").value = item.no_of_screens || '';
+        $("#activeStatus").value = String(item.active);
+        $("#availableStatus").value = String(item.available);
+        $("#latitude").value = item.latitude ?? '';
+        $("#longitude").value = item.longitude ?? '';
+      } else {
+        // Add mode
+        $("#modalTitle").textContent = 'Add New Site';
+        $("#submitBtn").textContent = 'Add Site';
+        const form = $("#addModal form"); form.reset();
+        $("#activeStatus").value = 'true';
+        $("#availableStatus").value = 'true';
+        $("#latitude").value = '';
+        $("#longitude").value = '';
+      }
+      show($("#addModal"));
+      setTimeout(() => $("#boardName").focus(), 0);
     }
-    function closeModal(){ hide($("#addModal")); }
+    function closeModal(){
+      hide($("#addModal"));
+      const form = $("#addModal form"); if(form) form.reset();
+      editingUuid = null;
+    }
 
     async function handleSubmit(e){
       e.preventDefault();
-      const data={
-        inventory_uuid:'INV-'+Date.now(),
-        board_name:$("#boardName").value,
-        display_name:$("#displayName").value,
-        reference_id:$("#referenceId").value,
-        country:$("#country").value,
-        state:$("#state").value,
-        district:$("#district").value,
-        address:$("#address").value,
-        billboard_type:$("#billboardType").value,
-        selling_standard_rate:parseFloat($("#standardRate").value)||null,
-        selling_monthly_rate:parseFloat($("#monthlyRate").value)||null,
-        no_of_screens:parseInt($("#noOfScreens").value)||null,
-        active:$("#activeStatus").value==='true',
-        available:$("#availableStatus").value==='true'
+      const lat = toNum($("#latitude").value);
+      const lng = toNum($("#longitude").value);
+
+      if(lat !== null && (lat < -90 || lat > 90)){
+        return toast('Latitude must be between -90 and 90', 'error');
+      }
+      if(lng !== null && (lng < -180 || lng > 180)){
+        return toast('Longitude must be between -180 and 180', 'error');
+      }
+
+      const data = {
+        board_name: $("#boardName").value,
+        display_name: $("#displayName").value,
+        reference_id: $("#referenceId").value,
+        country: $("#country").value,
+        state: $("#state").value,
+        district: $("#district").value,
+        address: $("#address").value,
+        billboard_type: $("#billboardType").value,
+        selling_standard_rate: toNum($("#standardRate").value),
+        selling_monthly_rate: toNum($("#monthlyRate").value),
+        no_of_screens: toInt($("#noOfScreens").value),
+        active: $("#activeStatus").value === 'true',
+        available: $("#availableStatus").value === 'true',
+        latitude: lat,
+        longitude: lng,
+        gps_coordinates: (lat != null && lng != null) ? `${lat},${lng}` : null
       };
-      const {error}=await supabase.from('inventory_production').insert([data]);
-      if(error) return toast(error.message,'error');
-      toast('Site added'); closeModal(); await loadStats(); await loadInventory();
+      
+      let error;
+      if(editingUuid){
+        const result = await supabase
+          .from('inventory_production')
+          .update(data)
+          .eq('inventory_uuid', editingUuid)
+          .eq('organization_id', currentUser.organizationId);
+        error = result.error;
+      } else {
+        data.inventory_uuid = 'INV-' + Date.now();
+        data.organization_id = currentUser.organizationId;
+        const result = await supabase.from('inventory_production').insert([data]);
+        error = result.error;
+      }
+      
+      if(error) return toast(error.message, 'error');
+      
+      toast(editingUuid ? 'Billboard updated' : 'Site added');
+      editingUuid = null;
+      closeModal();
+      await loadDashboard();
+      await loadInventory();
     }
 
     async function toggleStatus(uuid, currentStatus, boardName){
       const newStatus=!currentStatus; const statusText=newStatus?'Active':'Inactive';
       if(!confirm(`Change "${boardName}" to ${statusText}?`)) return;
-      const {data,error}=await supabase.from('inventory_production').update({active:newStatus}).eq('inventory_uuid',uuid).select();
+      const {data,error}=await supabase.from('inventory_production').update({active:newStatus}).eq('inventory_uuid',uuid).eq('organization_id', currentUser.organizationId).select();
       if(error) return toast(error.message,'error');
-      if(data&&data.length){ toast(`Changed to ${statusText}`); await loadStats(); await loadInventory(); }
+      if(data&&data.length){ toast(`Changed to ${statusText}`); await loadDashboard(); await loadInventory(); }
       else toast('No rows updated','error');
     }
 
     async function deleteItem(uuid,name){
       if(!confirm(`Delete ${name}?`)) return;
-      const {error}=await supabase.from('inventory_production').delete().eq('inventory_uuid',uuid);
+      const {error}=await supabase.from('inventory_production').delete().eq('inventory_uuid',uuid).eq('organization_id', currentUser.organizationId);
       if(error) return toast('Delete failed','error');
-      toast('Deleted'); await loadStats(); await loadInventory();
+      toast('Deleted'); await loadDashboard(); await loadInventory();
     }
 
     /* ====== CSV & Export ====== */
     const dz=$("#dropzone");
     ['dragenter','dragover'].forEach(evt=>dz.addEventListener(evt,e=>{e.preventDefault();dz.classList.add('drag')}));
     ['dragleave','drop'].forEach(evt=>dz.addEventListener(evt,e=>{e.preventDefault();dz.classList.remove('drag')}));
-    dz.addEventListener('drop',e=>{const f=e.dataTransfer.files?.[0]; if(f) handleFileUpload({target:{files:[f]}})});
+    dz.addEventListener('drop', e => {
+      const f = e.dataTransfer.files?.[0];
+      if (f) handleFileUpload({ target: { files: [f] } });
+    });
 
     function downloadCSVTemplate(){
       const template=`inventory_uuid,board_name,display_name,reference_id,country,state,district,address,latitude,longitude,gps_coordinates,media_owner,active,available,billboard_type,board_format,images,selling_standard_rate,selling_monthly_rate,no_of_screens,resolution,programmatic_enabled,exposure_to_dsp
@@ -688,55 +1131,64 @@ INV-SAMPLE-001,Downtown Billboard,Main Street Digital,REF-001,USA,California,Los
       a.href=URL.createObjectURL(blob); a.download='inventory_template.csv'; a.click(); URL.revokeObjectURL(a.href); toast('Template downloaded');
     }
 
-    function exportCurrentView(){
-      const headers=["Board Name","Location","Country","State","Type","Standard Rate","Monthly Rate","Screens","Active","Available"];
-      let rows=[];
-      if(viewMode==='list'){
-        rows=[...document.querySelectorAll('#inventoryBody tr')].map(tr=>{
-          const td=[...tr.querySelectorAll('td')];
-          if(!td.length) return null;
-          const st=td[8].innerText;
-          return [td[0].innerText.trim(),td[1].innerText.trim(),td[2].innerText.trim(),td[3].innerText.trim(),td[4].innerText.trim(),
-                  td[5].innerText.replace(/,/g,''),td[6].innerText.replace(/,/g,''),td[7].innerText.trim(),
-                  String(/Active/.test(st)&&!/Inactive/.test(st)), String(/Available/.test(st))];
-        }).filter(Boolean);
-      }else{
-        rows=lastData.map(i=>[i.board_name||'',i.address||'',i.country||'',i.state||'',i.billboard_type||'',
-              i.selling_standard_rate||'',i.selling_monthly_rate||'',i.no_of_screens??'',String(!!i.active),String(!!i.available)]);
-      }
-      const csv=[headers,...rows].map(r=>r.map(x=>`"${String(x).replace(/"/g,'""')}"`).join(',')).join('\n');
-      const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'})); a.download=`inventory_${Date.now()}.csv`; a.click(); URL.revokeObjectURL(a.href); toast('Exported');
-    }
-
     function handleFileUpload(e){
       const file=e.target.files?.[0]; if(!file) return;
-      const reader=new FileReader();
-      reader.onload=async ev=>{
-        const lines=String(ev.target.result||'').split('\n'); if(!lines.length) return toast('CSV empty','error');
-        const items=[];
-        for(let i=1;i<lines.length;i++){
-          if(!lines[i].trim()) continue;
-          const v=lines[i].split(',').map(s=>s.trim());
-          items.push({
-            inventory_uuid:v[0]||'INV-'+Date.now()+'-'+i, board_name:v[1]||'', display_name:v[2]||v[1]||'', reference_id:v[3]||'',
-            country:v[4]||'', state:v[5]||'', district:v[6]||'', address:v[7]||'',
-            latitude:v[8]?parseFloat(v[8]):null, longitude:v[9]?parseFloat(v[9]):null, gps_coordinates:v[10]||'',
-            media_owner:v[11]||'', active:v[12]==='true'||v[12]==='1'||v[12]==='TRUE', available:v[13]==='true'||v[13]==='1'||v[13]==='TRUE',
-            billboard_type:v[14]||'', board_format:v[15]||'', images:v[16]||'',
-            selling_standard_rate:v[17]?parseFloat(v[17]):null, selling_monthly_rate:v[18]?parseFloat(v[18]):null,
-            no_of_screens: v[19]?parseInt(v[19]):null, resolution:v[20]||'', programmatic_enabled:v[21]||'No', exposure_to_dsp:v[22]||'No'
-          });
-        }
-        if(!items.length) return toast('No valid rows','error');
-        if(!confirm(`Upload ${items.length} items?`)) return;
-        let uploaded=0; const batch=100;
-        for(let i=0;i<items.length;i+=batch){
-          const {error}=await supabase.from('inventory_production').insert(items.slice(i,i+batch));
-          if(error){toast(error.message,'error'); break;} uploaded+=Math.min(batch, items.length-i);
-        }
-        toast(`Uploaded ${uploaded}`); $("#csvFile").value=''; await loadStats(); await loadInventory();
-      };
-      reader.readAsText(file);
+
+      Papa.parse(file, {
+        header: true,
+        skipEmptyLines: true,
+        transformHeader: h => String(h||'').trim(),
+        complete: async function(results){
+          if (!results || !Array.isArray(results.data)) { toast('CSV parse failed','error'); return; }
+
+          const rows = results.data;
+
+          const items = rows.map((row, i) => {
+            const r = (k) => row[k] ?? '';
+            return {
+              inventory_uuid: r('inventory_uuid') || ('INV-' + Date.now() + '-' + i),
+              organization_id: currentUser.organizationId,
+              board_name: r('board_name') || '',
+              display_name: r('display_name') || r('board_name') || '',
+              reference_id: r('reference_id') || '',
+              country: r('country') || '',
+              state: r('state') || '',
+              district: r('district') || '',
+              address: r('address') || '',
+              latitude: toNum(r('latitude')),
+              longitude: toNum(r('longitude')),
+              gps_coordinates: r('gps_coordinates') || '',
+              media_owner: r('media_owner') || '',
+              active: toBool(r('active')),
+              available: toBool(r('available')),
+              billboard_type: r('billboard_type') || '',
+              board_format: r('board_format') || '',
+              images: r('images') || '',
+              selling_standard_rate: toNum(r('selling_standard_rate')),
+              selling_monthly_rate: toNum(r('selling_monthly_rate')),
+              no_of_screens: toInt(r('no_of_screens')),
+              resolution: r('resolution') || '',
+              programmatic_enabled: r('programmatic_enabled') || 'No',
+              exposure_to_dsp: r('exposure_to_dsp') || 'No'
+            };
+          }).filter(x => x.board_name || x.display_name || x.address);
+
+          if(!items.length) return toast('No valid rows','error');
+          if(!confirm(`Upload ${items.length} items?`)) return;
+
+          let uploaded=0; const batch=100;
+          for(let i=0;i<items.length;i+=batch){
+            const {error}=await supabase.from('inventory_production').insert(items.slice(i,i+batch));
+            if(error){ toast(error.message,'error'); break; }
+            uploaded+=Math.min(batch, items.length-i);
+          }
+          toast(`Uploaded ${uploaded}`);
+          $("#csvFile").value='';
+          await loadDashboard();
+          await loadInventory();
+        },
+        error: function(err){ toast('CSV error: '+err.message,'error'); }
+      });
     }
 
     /* ====== Map ====== */
@@ -768,7 +1220,7 @@ INV-SAMPLE-001,Downtown Billboard,Main Street Digital,REF-001,USA,California,Los
       data.forEach(item => {
         const lat = parseFloat(item.latitude);
         const lng = parseFloat(item.longitude);
-        if(!lat || !lng || isNaN(lat) || isNaN(lng)) return;
+        if(Number.isNaN(lat) || Number.isNaN(lng)) return;
 
         bounds.push([lat, lng]);
         let color = '#6b7280';
@@ -837,6 +1289,7 @@ INV-SAMPLE-001,Downtown Billboard,Main Street Digital,REF-001,USA,California,Los
         .from('bookings')
         .select('*')
         .eq('inventory_uuid', currentBillboardForBooking)
+        .eq('organization_id', currentUser.organizationId)
         .order('start_date', {ascending: false});
       
       if(error){ toast('Failed to load bookings', 'error'); return; }
@@ -866,11 +1319,34 @@ INV-SAMPLE-001,Downtown Billboard,Main Street Digital,REF-001,USA,California,Los
     async function handleBookingSubmit(e){
       e.preventDefault();
       
+      const startDate = $("#bookingStartDate").value;
+      const endDate = $("#bookingEndDate").value;
+      if(!startDate || !endDate){ return toast('Both dates are required', 'error'); }
+      if(new Date(endDate) < new Date(startDate)){ return toast('End date cannot be before start date', 'error'); }
+      
+      const {data: conflicts, error: conflictError} = await supabase
+        .from('bookings')
+        .select('*')
+        .eq('inventory_uuid', currentBillboardForBooking)
+        .eq('organization_id', currentUser.organizationId)
+        .neq('status', 'cancelled')
+        .lte('start_date', endDate)
+        .gte('end_date', startDate);
+      if(conflictError){ console.error('Conflict check error:', conflictError); }
+      if(conflicts && conflicts.length > 0){
+        const conflictList = conflicts.map(c => 
+          `${c.campaign_name || 'Untitled'}: ${c.start_date} to ${c.end_date}`
+        ).join('\n');
+        if(!confirm(`⚠️ CONFLICT DETECTED\n\nThis billboard has ${conflicts.length} overlapping booking(s):\n\n${conflictList}\n\nCreate booking anyway?`)){
+          return;
+        }
+      }
+
       const booking = {
         inventory_uuid: currentBillboardForBooking,
         organization_id: currentUser.organizationId,
-        start_date: $("#bookingStartDate").value,
-        end_date: $("#bookingEndDate").value,
+        start_date: startDate,
+        end_date: endDate,
         client_name: $("#bookingClient").value,
         campaign_name: $("#bookingCampaign").value,
         status: $("#bookingStatus").value,
@@ -884,26 +1360,321 @@ INV-SAMPLE-001,Downtown Billboard,Main Street Digital,REF-001,USA,California,Los
       toast('Booking created successfully');
       cancelNewBooking();
       loadBillboardBookings();
+      loadDashboard();
     }
 
     async function deleteBooking(id){
       if(!confirm('Delete this booking? This cannot be undone.')) return;
-      const {error} = await supabase.from('bookings').delete().eq('id', id);
+      const {error} = await supabase.from('bookings').delete().eq('id', id).eq('organization_id', currentUser.organizationId);
       if(error){ toast('Delete failed', 'error'); return; }
       toast('Booking deleted');
       loadBillboardBookings();
+      loadDashboard();
     }
 
     /* ====== Misc ====== */
-    function syncNow(){ loadStats(); loadInventory(); toast('Synced'); }
+    /* ====== Analytics ====== */
+        let revenueChart = null;
+        let statusChart = null;
+
+        async function loadAnalytics(){
+
+          if(!currentUser) return;
+          // Guard: Only run if analytics section exists and is visible
+          const analyticsSection = document.getElementById('dashboardAnalytics');
+          if(!analyticsSection || analyticsSection.offsetParent === null) return;
+
+          const orgId = currentUser.organizationId;
+          const today = new Date();
+          const firstOfMonth = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
+          const lastOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().split('T')[0];
+
+          // Get all bookings
+          const {data: allBookings} = await supabase
+            .from('bookings')
+            .select('*, inventory_production(selling_monthly_rate, board_name)')
+            .eq('organization_id', orgId);
+
+          // Revenue MTD
+          const mtdBookings = (allBookings || []).filter(b => 
+            b.start_date <= lastOfMonth && b.end_date >= firstOfMonth && b.status !== 'cancelled'
+          );
+          const revenueMTD = mtdBookings.reduce((sum, b) => {
+            const rate = b.inventory_production?.selling_monthly_rate || 0;
+            return sum + rate;
+          }, 0);
+          $("#analyticsRevenueMTD").textContent = '$' + fmt(revenueMTD);
+          $("#analyticsRevenueTrend").textContent = `${mtdBookings.length} active bookings`;
+
+          // Occupancy rate
+          const todayStr = today.toISOString().split('T')[0];
+          const occupiedToday = (allBookings || []).filter(b => 
+            b.start_date <= todayStr && b.end_date >= todayStr && b.status === 'confirmed'
+          ).length;
+          const occupancyRate = totalCount > 0 ? Math.round((occupiedToday / totalCount) * 100) : 0;
+          $("#analyticsOccupancy").textContent = occupancyRate + '%';
+          $("#analyticsOccupancyDetail").textContent = `${occupiedToday} of ${totalCount} booked`;
+
+          // Average revenue per billboard
+          const avgRevenue = totalCount > 0 ? Math.round(revenueMTD / totalCount) : 0;
+          $("#analyticsAvgRevenue").textContent = '$' + fmt(avgRevenue);
+
+          // Revenue by month chart
+          const monthlyRevenue = {};
+          for(let i = 2; i >= 0; i--){ // Only last 3 months
+            const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
+            const monthKey = d.toLocaleDateString('en-US', {month: 'short', year: 'numeric'});
+            const firstDay = new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0];
+            const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().split('T')[0];
+            const revenue = (allBookings || []).filter(b => 
+              b.start_date <= lastDay && b.end_date >= firstDay && b.status !== 'cancelled'
+            ).reduce((sum, b) => sum + (b.inventory_production?.selling_monthly_rate || 0), 0);
+            monthlyRevenue[monthKey] = revenue;
+          }
+
+          renderRevenueChart(monthlyRevenue);
+
+          // Status chart
+          const statusCounts = {
+            confirmed: (allBookings || []).filter(b => b.status === 'confirmed').length,
+            pending: (allBookings || []).filter(b => b.status === 'pending').length,
+            completed: (allBookings || []).filter(b => b.status === 'completed').length,
+            cancelled: (allBookings || []).filter(b => b.status === 'cancelled').length
+          };
+          renderStatusChart(statusCounts);
+
+          // Top performing billboards
+          const billboardRevenue = {};
+          (allBookings || []).forEach(b => {
+            if(b.status === 'cancelled') return;
+            const name = b.inventory_production?.board_name || 'Unknown';
+            const rate = b.inventory_production?.selling_monthly_rate || 0;
+            billboardRevenue[name] = (billboardRevenue[name] || 0) + rate;
+          });
+      
+          const topBillboards = Object.entries(billboardRevenue)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 3);
+      
+          renderTopBillboards(topBillboards);
+        }
+
+        function renderRevenueChart(data){
+          const ctx = document.getElementById('revenueChart');
+          if(!ctx) return;
+      
+          if(revenueChart) revenueChart.destroy();
+      
+          revenueChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+              labels: Object.keys(data),
+              datasets: [{
+                label: 'Revenue',
+                data: Object.values(data),
+                backgroundColor: '#667eea',
+                borderRadius: 3,
+                barThickness: 16,
+                maxBarThickness: 18,
+                minBarLength: 2
+              }]
+            },
+            options: {
+            responsive: false,
+            maintainAspectRatio: true,
+              plugins: {
+                legend: { display: false }
+              },
+              scales: {
+                x: {
+                  grid: { display: false },
+                  ticks: { font: { size: 11 }, maxRotation: 0, minRotation: 0 }
+                },
+                y: {
+                  grid: { display: false },
+                  beginAtZero: true,
+                  ticks: {
+                    font: { size: 11 },
+                    callback: function(value) { return '$' + value.toLocaleString(); }
+                  }
+                }
+              }
+            }
+          });
+        }
+
+        function renderStatusChart(data){
+          const ctx = document.getElementById('statusChart');
+          if(!ctx) return;
+      
+          if(statusChart) statusChart.destroy();
+      
+          statusChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+              labels: ['Confirmed', 'Pending', 'Completed', 'Cancelled'],
+              datasets: [{
+                data: [data.confirmed, data.pending, data.completed, data.cancelled],
+                backgroundColor: ['#10b981', '#f59e0b', '#667eea', '#ef4444'],
+                borderWidth: 2,
+                borderColor: '#fff'
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: { position: 'bottom' }
+              }
+            }
+          });
+        }
+
+        function renderTopBillboards(data){
+          const container = $("#topBillboards");
+          if(!container) return;
+      
+          if(data.length === 0){
+            container.innerHTML = '<p style="color:#6b7280;text-align:center;padding:20px">No revenue data yet</p>';
+            return;
+          }
+      
+          container.innerHTML = data.map(([name, revenue], i) => `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-bottom:1px solid #e5e7eb;font-size:14px">
+              <div style="display:flex;align-items:center;gap:12px">
+                <span style="font-size:18px;font-weight:800;color:#6b7280">#${i+1}</span>
+                <span style="font-weight:600">${escapeHtml(name)}</span>
+              </div>
+              <span style="font-size:18px;font-weight:800;color:#10b981">$${fmt(revenue)}</span>
+            </div>
+          `).join('');
+        }
+    function syncNow(){ loadDashboard(); loadInventory(); toast('Synced'); }
 
     window.addEventListener('load', ()=>{
-      const savedRows=parseInt(sessionStorage.getItem('rows')||'50',10); rowsPerPage=isNaN(savedRows)?50:savedRows; $("#rowsSelect").value=String(rowsPerPage);
+      const savedRows=parseInt(sessionStorage.getItem('rows')||'50',10); rowsPerPage=isNaN(savedRows)?50:savedRows; $("#rowsSelect").value=String(savedRows);
       const savedView=sessionStorage.getItem('view'); if(savedView) viewMode=savedView;
       const savedPage=parseInt(sessionStorage.getItem('page')||'1',10); if(!isNaN(savedPage)) currentPage=savedPage;
     });
 
-    // expose to window
+    /* ====== Bulk Actions (fixed) ====== */
+    function toggleSelect(uuid, checked){
+      if(checked) selectedBillboards.add(uuid);
+      else selectedBillboards.delete(uuid);
+      updateBulkBar();
+      $("#selectAll").checked = lastData.length>0 && lastData.every(it=>selectedBillboards.has(it.inventory_uuid));
+    }
+
+    function toggleSelectAll(checked){
+      if(checked){ lastData.forEach(item => selectedBillboards.add(item.inventory_uuid)); }
+      else{ lastData.forEach(item => selectedBillboards.delete(item.inventory_uuid)); }
+      document.querySelectorAll('.row-select').forEach(cb=>{ cb.checked = checked; });
+      updateBulkBar();
+    }
+
+    function updateBulkBar(){
+      const count = selectedBillboards.size;
+      const bar = $("#bulkBar");
+      const countEl = $("#bulkCount");
+      if(count > 0){ bar.classList.remove('hidden'); countEl.textContent = `${count} selected`; }
+      else{ bar.classList.add('hidden'); }
+    }
+
+    function clearSelection(){
+      selectedBillboards.clear();
+      const selAll=$("#selectAll"); if(selAll) selAll.checked=false;
+      document.querySelectorAll('.row-select').forEach(cb=> cb.checked=false);
+      updateBulkBar();
+    }
+
+    async function bulkActivate(){
+      if(selectedBillboards.size === 0) return toast('No billboards selected', 'error');
+      if(!confirm(`Activate ${selectedBillboards.size} billboard(s)?`)) return;
+      const {error} = await supabase.from('inventory_production').update({active: true}).in('inventory_uuid', Array.from(selectedBillboards));
+      if(error) return toast(error.message, 'error');
+      toast(`Activated ${selectedBillboards.size} billboard(s)`);
+      clearSelection(); loadStats(); loadInventory();
+    }
+
+    async function bulkDeactivate(){
+      if(selectedBillboards.size === 0) return toast('No billboards selected', 'error');
+      if(!confirm(`Deactivate ${selectedBillboards.size} billboard(s)?`)) return;
+      const {error} = await supabase.from('inventory_production').update({active: false}).in('inventory_uuid', Array.from(selectedBillboards));
+      if(error) return toast(error.message, 'error');
+      toast(`Deactivated ${selectedBillboards.size} billboard(s)`);
+      clearSelection(); loadStats(); loadInventory();
+    }
+
+    async function bulkDelete(){
+      if(selectedBillboards.size === 0) return toast('No billboards selected', 'error');
+      if(!confirm(`DELETE ${selectedBillboards.size} billboard(s)? This cannot be undone!`)) return;
+      const {error} = await supabase.from('inventory_production').delete().in('inventory_uuid', Array.from(selectedBillboards));
+      if(error) return toast('Delete failed', 'error');
+      toast(`Deleted ${selectedBillboards.size} billboard(s)`);
+      clearSelection(); loadStats(); loadInventory();
+    }
+
+    async function bulkExport(){
+      if(selectedBillboards.size === 0) return toast('No billboards selected', 'error');
+      const selectedData = lastData.filter(item => selectedBillboards.has(item.inventory_uuid));
+      const headers = ["Board Name", "Location", "Country", "State", "Type", "Standard Rate", "Monthly Rate", "Screens", "Active", "Available"];
+      const rows = selectedData.map(i => [
+        i.board_name || '',
+        i.address || '',
+        i.country || '',
+        i.state || '',
+        i.billboard_type || '',
+        i.selling_standard_rate ?? '',
+        i.selling_monthly_rate ?? '',
+        i.no_of_screens ?? '',
+        i.active ? 'Yes' : 'No',
+        i.available ? 'Yes' : 'No'
+      ]);
+      const csv = [headers, ...rows].map(r => r.map(x => '"' + String(x).replace(/"/g, '""') + '"').join(',')).join('\n');
+      const blob = new Blob([csv], {type: 'text/csv'});
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'selected_inventory_' + Date.now() + '.csv';
+      a.click();
+      URL.revokeObjectURL(a.href);
+      toast('Exported ' + selectedBillboards.size + ' billboard(s)');
+    }
+
+    function exportCurrentView(){
+      if(!lastData || lastData.length === 0) return toast('No data to export', 'error');
+      const headers = ["Board Name", "Location", "Country", "State", "Type", "Standard Rate", "Monthly Rate", "Screens", "Active", "Available"];
+      const rows = lastData.map(i => [
+        i.board_name || '',
+        i.address || '',
+        i.country || '',
+        i.state || '',
+        i.billboard_type || '',
+        i.selling_standard_rate ?? '',
+        i.selling_monthly_rate ?? '',
+        i.no_of_screens ?? '',
+        i.active ? 'Yes' : 'No',
+        i.available ? 'Yes' : 'No'
+      ]);
+      const csv = [headers, ...rows].map(r => r.map(x => '"' + String(x).replace(/"/g, '""') + '"').join(',')).join('\n');
+      const blob = new Blob([csv], {type: 'text/csv'});
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'inventory_export_' + Date.now() + '.csv';
+      a.click();
+      URL.revokeObjectURL(a.href);
+      toast('Exported ' + lastData.length + ' items');
+    }
+
+    function applyPresetFilter(kind){
+      if(kind==='all'){ $("#activeFilter").checked=false; $("#availableFilter").checked=false; }
+      if(kind==='available'){ $("#activeFilter").checked=false; $("#availableFilter").checked=true; }
+      if(kind==='active'){ $("#activeFilter").checked=true; $("#availableFilter").checked=false; }
+      if(kind==='inactive'){ $("#activeFilter").checked=false; $("#availableFilter").checked=false; $("#typeFilter").value=''; }
+      if(kind==='booked'){ /* reserved for date-overlap filter if needed */ }
+      currentPage=1; loadInventory();
+    }
+
+    // Expose to window
     window.applyFilters=applyFilters; window.resetFilters=resetFilters; window.exportCurrentView=exportCurrentView;
     window.openAddModal=openAddModal; window.closeModal=closeModal;
     window.toggleStatus=toggleStatus; window.deleteItem=deleteItem;
@@ -918,6 +1689,9 @@ INV-SAMPLE-001,Downtown Billboard,Main Street Digital,REF-001,USA,California,Los
     window.cancelNewBooking=cancelNewBooking;
     window.handleBookingSubmit=handleBookingSubmit;
     window.deleteBooking=deleteBooking;
+
+    function showLoading(){ show($("#loadingOverlay")); }
+    function hideLoading(){ hide($("#loadingOverlay")); }
   </script>
 </body>
 </html>
