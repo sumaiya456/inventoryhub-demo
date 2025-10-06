@@ -160,6 +160,52 @@
 
     /* spinner keyframes */
     @keyframes spin{to{transform:rotate(360deg)}}
+    /* Calendar */
+    .calendar-day{
+      min-height:90px;
+      padding:6px;
+      border:1px solid #e5e7eb;
+      background:#fff;
+      position:relative;
+      cursor:pointer;
+      transition:background .2s;
+    }
+    .calendar-day:hover{background:#f8f9ff}
+    .calendar-day.other-month{background:#f9fafb;color:#9ca3af}
+    .calendar-day.today{background:#eef2ff;border:2px solid var(--primary)}
+    .calendar-day-number{
+      font-weight:700;
+      font-size:13px;
+      margin-bottom:4px;
+      color:#111827;
+    }
+    .calendar-day.other-month .calendar-day-number{color:#9ca3af}
+    .calendar-booking{
+      font-size:10px;
+      padding:2px 4px;
+      border-radius:3px;
+      margin-bottom:2px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      font-weight:600;
+      color:#fff;
+    }
+    .calendar-booking.confirmed{background:#10b981}
+    .calendar-booking.pending{background:#f59e0b}
+    .calendar-booking.completed{background:#667eea}
+    .calendar-booking.cancelled{background:#ef4444}
+    .calendar-booking-count{
+      position:absolute;
+      bottom:4px;
+      right:4px;
+      background:#667eea;
+      color:#fff;
+      font-size:10px;
+      font-weight:700;
+      padding:2px 6px;
+      border-radius:10px;
+    }
   </style>
 </head>
 <body>
@@ -213,6 +259,7 @@
       <button id="tab-dashboard" class="tab" role="tab" aria-selected="true" onclick="setTab('dashboard')">Dashboard</button>
       <button id="tab-inventory" class="tab" role="tab" aria-selected="false" onclick="setTab('inventory')">Inventory</button>
       <button id="tab-map" class="tab" role="tab" aria-selected="false" onclick="setTab('map')">Map View</button>
+  <button id="tab-calendar" class="tab" role="tab" aria-selected="false" onclick="setTab('calendar')">Calendar</button>
     </div>
 
     <!-- Panes -->
@@ -499,6 +546,64 @@
         </div>
   <div id="map" style="width:100%;margin-bottom:16px"></div>
       </section>
+    </section>
+    <!-- Calendar Pane -->
+      <section id="pane-calendar" class="pane hidden" role="tabpanel" aria-labelledby="tab-calendar">
+        <div class="filterbox">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+            <h3 style="font-size:16px;margin:0">Booking Calendar</h3>
+            <div style="display:flex;gap:8px;align-items:center">
+              <button class="btn btn-secondary btn-sm" onclick="previousMonth()">‹ Prev</button>
+              <span id="calendarMonthYear" style="font-weight:600;min-width:150px;text-align:center"></span>
+              <button class="btn btn-secondary btn-sm" onclick="nextMonth()">Next ›</button>
+              <button class="btn btn-secondary btn-sm" onclick="todayMonth()">Today</button>
+            </div>
+          </div>
+
+          <!-- Legend -->
+          <div style="display:flex;gap:16px;margin-bottom:12px;padding:8px;background:#f9fafb;border-radius:8px">
+            <div style="display:flex;align-items:center;gap:6px;font-size:12px">
+              <div style="width:12px;height:12px;border-radius:3px;background:#10b981"></div>
+              <span>Confirmed</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;font-size:12px">
+              <div style="width:12px;height:12px;border-radius:3px;background:#f59e0b"></div>
+              <span>Pending</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;font-size:12px">
+              <div style="width:12px;height:12px;border-radius:3px;background:#667eea"></div>
+              <span>Completed</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;font-size:12px">
+              <div style="width:12px;height:12px;border-radius:3px;background:#ef4444"></div>
+              <span>Cancelled</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Calendar Grid -->
+        <div style="background:#fff;border:2px solid #eef2ff;border-radius:12px;overflow:hidden">
+          <div style="display:grid;grid-template-columns:repeat(7,1fr);background:var(--primary);color:#fff">
+            <div style="padding:12px;text-align:center;font-weight:700;font-size:12px;text-transform:uppercase">Sun</div>
+            <div style="padding:12px;text-align:center;font-weight:700;font-size:12px;text-transform:uppercase">Mon</div>
+            <div style="padding:12px;text-align:center;font-weight:700;font-size:12px;text-transform:uppercase">Tue</div>
+            <div style="padding:12px;text-align:center;font-weight:700;font-size:12px;text-transform:uppercase">Wed</div>
+            <div style="padding:12px;text-align:center;font-weight:700;font-size:12px;text-transform:uppercase">Thu</div>
+            <div style="padding:12px;text-align:center;font-weight:700;font-size:12px;text-transform:uppercase">Fri</div>
+            <div style="padding:12px;text-align:center;font-weight:700;font-size:12px;text-transform:uppercase">Sat</div>
+          </div>
+          <div id="calendarGrid" style="display:grid;grid-template-columns:repeat(7,1fr);min-height:500px"></div>
+        </div>
+
+        <!-- Day Details Panel -->
+        <div id="dayDetailsPanel" class="filterbox hidden" style="margin-top:16px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+            <h4 id="dayDetailsTitle" style="margin:0;font-size:15px"></h4>
+            <button class="btn btn-secondary btn-sm" onclick="closeDayDetails()">Close</button>
+          </div>
+          <div id="dayDetailsContent"></div>
+        </div>
+      </section>
     </div>
   </div>
 
@@ -664,12 +769,13 @@
           analyticsSection.classList.add('hidden');
         }
       }
-      ['dashboard','inventory','map'].forEach(t=>{
+      ['dashboard','inventory','map','calendar'].forEach(t=>{
         document.getElementById(`pane-${t}`).classList.toggle('hidden', t!==tab);
         document.getElementById(`tab-${t}`).setAttribute('aria-selected', String(t===tab));
       });
       if(!initial && tab==='inventory'){ loadInventory(); }
       if(!initial && tab==='map'){ initMap(); }
+      if(!initial && tab==='calendar'){ loadCalendar(); }
     }
 
     /* ====== Stats + Dashboard ====== */
@@ -1674,7 +1780,158 @@ INV-SAMPLE-001,Downtown Billboard,Main Street Digital,REF-001,USA,California,Los
       currentPage=1; loadInventory();
     }
 
-    // Expose to window
+    /* ====== Calendar ====== */
+    let currentCalendarDate = new Date();
+    let allBookingsForCalendar = [];
+
+    async function loadCalendar(){
+      if(!currentUser) return;
+
+      const year = currentCalendarDate.getFullYear();
+      const month = currentCalendarDate.getMonth();
+      
+      $("#calendarMonthYear").textContent = currentCalendarDate.toLocaleDateString('en-US', {month: 'long', year: 'numeric'});
+
+      // Fetch all bookings for this month and adjacent months
+      const firstDay = new Date(year, month - 1, 1).toISOString().split('T')[0];
+      const lastDay = new Date(year, month + 2, 0).toISOString().split('T')[0];
+
+      const {data: bookings, error} = await supabase
+        .from('bookings')
+        .select('*, inventory_production(board_name)')
+        .eq('organization_id', currentUser.organizationId)
+        .gte('end_date', firstDay)
+        .lte('start_date', lastDay)
+        .order('start_date', {ascending: true});
+
+      if(error){ toast('Failed to load bookings', 'error'); return; }
+      
+      allBookingsForCalendar = bookings || [];
+      renderCalendar();
+    }
+
+    function renderCalendar(){
+      const year = currentCalendarDate.getFullYear();
+      const month = currentCalendarDate.getMonth();
+      
+      const firstDayOfMonth = new Date(year, month, 1);
+      const lastDayOfMonth = new Date(year, month + 1, 0);
+      const startingDayOfWeek = firstDayOfMonth.getDay();
+      const daysInMonth = lastDayOfMonth.getDate();
+
+      const grid = $("#calendarGrid");
+      grid.innerHTML = '';
+
+      const today = new Date().toISOString().split('T')[0];
+
+      // Previous month days
+      const prevMonthLastDay = new Date(year, month, 0).getDate();
+      for(let i = startingDayOfWeek - 1; i >= 0; i--){
+        const day = prevMonthLastDay - i;
+        const dateStr = new Date(year, month - 1, day).toISOString().split('T')[0];
+        grid.appendChild(createDayCell(day, dateStr, true));
+      }
+
+      // Current month days
+      for(let day = 1; day <= daysInMonth; day++){
+        const dateStr = new Date(year, month, day).toISOString().split('T')[0];
+        const isToday = dateStr === today;
+        grid.appendChild(createDayCell(day, dateStr, false, isToday));
+      }
+
+      // Next month days
+      const totalCells = grid.children.length;
+      const remainingCells = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
+      for(let day = 1; day <= remainingCells; day++){
+        const dateStr = new Date(year, month + 1, day).toISOString().split('T')[0];
+        grid.appendChild(createDayCell(day, dateStr, true));
+      }
+    }
+
+    function createDayCell(day, dateStr, otherMonth, isToday = false){
+      const cell = document.createElement('div');
+      cell.className = 'calendar-day';
+      if(otherMonth) cell.classList.add('other-month');
+      if(isToday) cell.classList.add('today');
+      
+      const dayBookings = allBookingsForCalendar.filter(b => 
+        dateStr >= b.start_date && dateStr <= b.end_date
+      );
+
+      const displayLimit = 3;
+      const hasMore = dayBookings.length > displayLimit;
+
+      cell.innerHTML = `
+        <div class="calendar-day-number">${day}</div>
+        ${dayBookings.slice(0, displayLimit).map(b => {
+          const boardName = b.inventory_production?.board_name || 'Billboard';
+          return `<div class="calendar-booking ${b.status}" title="${escapeHtml(boardName)} - ${b.campaign_name || 'No name'}">${escapeHtml(boardName.substring(0, 15))}</div>`;
+        }).join('')}
+        ${hasMore ? `<div class="calendar-booking-count">+${dayBookings.length - displayLimit} more</div>` : ''}
+      `;
+
+      cell.onclick = () => showDayDetails(dateStr, dayBookings);
+      return cell;
+    }
+
+    function showDayDetails(dateStr, bookings){
+      const panel = $("#dayDetailsPanel");
+      const date = new Date(dateStr + 'T12:00:00');
+      $("#dayDetailsTitle").textContent = date.toLocaleDateString('en-US', {weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'});
+      
+      const content = $("#dayDetailsContent");
+      if(bookings.length === 0){
+        content.innerHTML = '<p style="color:#6b7280;padding:20px;text-align:center">No bookings on this day</p>';
+      } else {
+        content.innerHTML = bookings.map(b => `
+          <div style="padding:12px;border:1px solid #e5e7eb;border-radius:8px;margin-bottom:8px;border-left:4px solid ${getStatusColor(b.status)}">
+            <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:4px">
+              <strong style="font-size:14px">${escapeHtml(b.inventory_production?.board_name || 'Billboard')}</strong>
+              <span class="booking-status ${b.status}">${b.status}</span>
+            </div>
+            <div style="font-size:13px;color:#6b7280">
+              ${escapeHtml(b.campaign_name || 'No campaign name')}
+            </div>
+            <div style="font-size:12px;color:#6b7280;margin-top:4px">
+              ${b.start_date} to ${b.end_date}
+            </div>
+            ${b.client_name ? `<div style="font-size:12px;color:#6b7280">Client: ${escapeHtml(b.client_name)}</div>` : ''}
+          </div>
+        `).join('');
+      }
+      
+      panel.classList.remove('hidden');
+      panel.scrollIntoView({behavior: 'smooth', block: 'nearest'});
+    }
+
+    function closeDayDetails(){
+      $("#dayDetailsPanel").classList.add('hidden');
+    }
+
+    function getStatusColor(status){
+      const colors = {confirmed: '#10b981', pending: '#f59e0b', completed: '#667eea', cancelled: '#ef4444'};
+      return colors[status] || '#6b7280';
+    }
+
+    function previousMonth(){
+      currentCalendarDate.setMonth(currentCalendarDate.getMonth() - 1);
+      loadCalendar();
+    }
+
+    function nextMonth(){
+      currentCalendarDate.setMonth(currentCalendarDate.getMonth() + 1);
+      loadCalendar();
+    }
+
+    function todayMonth(){
+      currentCalendarDate = new Date();
+      loadCalendar();
+    }
+  // Expose to window
+  window.previousMonth=previousMonth;
+  window.nextMonth=nextMonth;
+  window.todayMonth=todayMonth;
+  window.closeDayDetails=closeDayDetails;
     window.applyFilters=applyFilters; window.resetFilters=resetFilters; window.exportCurrentView=exportCurrentView;
     window.openAddModal=openAddModal; window.closeModal=closeModal;
     window.toggleStatus=toggleStatus; window.deleteItem=deleteItem;
