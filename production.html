@@ -260,6 +260,7 @@
       <button id="tab-inventory" class="tab" role="tab" aria-selected="false" onclick="setTab('inventory')">Inventory</button>
       <button id="tab-map" class="tab" role="tab" aria-selected="false" onclick="setTab('map')">Map View</button>
   <button id="tab-calendar" class="tab" role="tab" aria-selected="false" onclick="setTab('calendar')">Calendar</button>
+  <button id="tab-apikeys" class="tab" role="tab" aria-selected="false" onclick="setTab('apikeys')">API Keys</button>
     </div>
 
     <!-- Panes -->
@@ -370,6 +371,55 @@
           <div id="dashboardAlertsList"></div>
         </div>
       </section>
+<!-- API Keys Pane -->
+<section id="pane-apikeys" class="pane hidden" role="tabpanel" aria-labelledby="tab-apikeys">
+  <div class="filterbox">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div>
+        <h3 style="margin:0;font-size:18px;font-weight:700">🔑 API Keys</h3>
+        <p style="color:#6b7280;font-size:13px;margin:4px 0 0 0">Manage API keys for external integrations</p>
+      </div>
+      <button class="btn btn-primary" onclick="generateAPIKey()">+ Generate New Key</button>
+    </div>
+
+    <!-- API Keys List -->
+    <div id="apiKeysList" style="margin-top:16px">
+      <div style="color:#6b7280;padding:20px;text-align:center">Loading API keys...</div>
+    </div>
+  </div>
+
+  <!-- API Documentation -->
+  <div class="filterbox" style="margin-top:20px">
+    <h3 style="margin-bottom:12px;font-size:16px;font-weight:700">📚 API Documentation</h3>
+    <p style="color:#6b7280;margin-bottom:16px">Use these endpoints to integrate with external systems:</p>
+    
+    <div style="background:#1f2937;padding:16px;border-radius:8px;overflow-x:auto">
+      <pre style="color:#e5e7eb;margin:0;font-size:13px;line-height:1.6"><code><span style="color:#10b981"># List Inventory (GET)</span>
+GET https://slokdinbenkwkqfoduwq.supabase.co/rest/v1/inventory_production
+Headers:
+  apikey: YOUR_SUPABASE_ANON_KEY
+  Authorization: Bearer YOUR_SUPABASE_ANON_KEY
+  x-api-key: YOUR_API_KEY
+
+<span style="color:#10b981"># Filter by country</span>
+?country=eq.USA
+
+<span style="color:#10b981"># Filter by active status</span>
+?active=eq.true
+
+<span style="color:#10b981"># Pagination</span>
+?limit=50&offset=0
+
+<span style="color:#10b981"># Search by name</span>
+?board_name=ilike.*Plaza*</code></pre>
+    </div>
+
+    <div style="background:#fef3c7;padding:12px;border-radius:8px;margin-top:12px;border-left:4px solid #f59e0b">
+      <strong style="color:#92400e">⚠️ Important:</strong>
+      <p style="color:#92400e;margin:4px 0 0 0;font-size:13px">Keep your API keys secure. Never share them publicly or commit them to version control.</p>
+    </div>
+  </div>
+</section>
 
               <!-- Analytics Section on Dashboard -->
 
@@ -769,13 +819,14 @@
           analyticsSection.classList.add('hidden');
         }
       }
-      ['dashboard','inventory','map','calendar'].forEach(t=>{
+      ['dashboard','inventory','map','calendar','apikeys'].forEach(t=>{
         document.getElementById(`pane-${t}`).classList.toggle('hidden', t!==tab);
         document.getElementById(`tab-${t}`).setAttribute('aria-selected', String(t===tab));
       });
       if(!initial && tab==='inventory'){ loadInventory(); }
       if(!initial && tab==='map'){ initMap(); }
       if(!initial && tab==='calendar'){ loadCalendar(); }
+      if(!initial && tab==='apikeys'){ loadAPIKeys(); }
     }
 
     /* ====== Stats + Dashboard ====== */
@@ -1932,6 +1983,158 @@ INV-SAMPLE-001,Downtown Billboard,Main Street Digital,REF-001,USA,California,Los
   window.nextMonth=nextMonth;
   window.todayMonth=todayMonth;
   window.closeDayDetails=closeDayDetails;
+
+  /* ====== API Key Management ====== */
+  async function loadAPIKeys(){
+    if(!currentUser) return;
+  
+    const {data, error} = await supabase
+      .from('api_keys')
+      .select('*')
+      .eq('organization_id', currentUser.organizationId)
+      .order('created_at', {ascending: false});
+  
+    if(error){
+      toast(error.message, 'error');
+      return;
+    }
+  
+    const list = $('#apiKeysList');
+  
+    if(!data || data.length === 0){
+      list.innerHTML = `
+        <div style="text-align:center;padding:40px;background:#f9fafb;border-radius:8px;border:2px dashed #e5e7eb">
+          <div style="font-size:48px;margin-bottom:12px">🔑</div>
+          <h4 style="margin:0 0 8px 0;color:#111827">No API Keys Yet</h4>
+          <p style="color:#6b7280;margin:0 0 16px 0">Generate your first API key to start integrating with external systems</p>
+          <button class="btn btn-primary" onclick="generateAPIKey()">Generate API Key</button>
+        </div>
+      `;
+      return;
+    }
+  
+    list.innerHTML = data.map(key => {
+      const createdDate = new Date(key.created_at).toLocaleDateString('en-US', {year: 'numeric', month: 'short', day: 'numeric'});
+      const lastUsed = key.last_used_at 
+        ? new Date(key.last_used_at).toLocaleString('en-US', {year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'})
+        : 'Never';
+    
+      return `
+        <div style="border:2px solid #e5e7eb;border-radius:10px;padding:16px;margin-bottom:12px;background:#fff">
+          <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:12px">
+            <div style="flex:1">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+                <strong style="font-size:15px">${escapeHtml(key.key_name)}</strong>
+                <span class="badge ${key.is_active ? 'badge-active' : 'badge-inactive'}" style="font-size:10px">
+                  ${key.is_active ? 'Active' : 'Inactive'}
+                </span>
+              </div>
+              <div style="font-size:12px;color:#6b7280">
+                Created: ${createdDate} • Last used: ${lastUsed}
+              </div>
+            </div>
+            <div style="display:flex;gap:6px">
+              <button class="btn btn-sm btn-secondary" onclick="copyAPIKey('${escapeHtml(key.api_key)}')">📋 Copy</button>
+              <button class="btn btn-sm btn-danger" onclick="revokeAPIKey('${key.id}', '${escapeHtml(key.key_name)}')">Revoke</button>
+            </div>
+          </div>
+          <div style="background:#f9fafb;padding:10px;border-radius:6px;font-family:monospace;font-size:12px;color:#374151;overflow-x:auto">
+            ${escapeHtml(key.api_key.substring(0, 20))}••••••••••••••••••••
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  async function generateAPIKey(){
+    const keyName = prompt('Enter a name for this API key:\n(e.g., "Production API", "LMX Integration", "Testing")');
+    if(!keyName || !keyName.trim()) return;
+  
+    showLoading();
+  
+    // Generate secure random key
+    const randomBytes = new Uint8Array(32);
+    crypto.getRandomValues(randomBytes);
+    const apiKey = 'sk_' + Array.from(randomBytes)
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join('');
+  
+    const {data, error} = await supabase.from('api_keys').insert([{
+      organization_id: currentUser.organizationId,
+      key_name: keyName.trim(),
+      api_key: apiKey,
+      is_active: true
+    }]).select().single();
+  
+    hideLoading();
+  
+    if(error){
+      toast(error.message, 'error');
+      return;
+    }
+  
+    // Show the key in a modal (one-time view)
+    const copyBtn = `<button onclick="copyToClipboard('${apiKey}')" style="padding:8px 16px;background:#10b981;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:600;margin-top:12px">📋 Copy to Clipboard</button>`;
+  
+    const confirmed = confirm(
+      `✅ API Key Generated Successfully!\n\n` +
+      `Key: ${apiKey}\n\n` +
+      `⚠️ IMPORTANT: Copy this key now! You won't be able to see it again.\n\n` +
+      `Click OK to copy to clipboard.`
+    );
+  
+    if(confirmed){
+      copyToClipboard(apiKey);
+      toast('API key copied to clipboard!');
+    }
+  
+    loadAPIKeys();
+  }
+
+  async function revokeAPIKey(id, name){
+    if(!confirm(`Revoke API key "${name}"?\n\nThis will immediately stop all API requests using this key. This action cannot be undone.`)) return;
+  
+    const {error} = await supabase
+      .from('api_keys')
+      .delete()
+      .eq('id', id)
+      .eq('organization_id', currentUser.organizationId);
+  
+    if(error){
+      toast(error.message, 'error');
+      return;
+    }
+  
+    toast('API key revoked successfully');
+    loadAPIKeys();
+  }
+
+  function copyAPIKey(apiKey){
+    copyToClipboard(apiKey);
+    toast('Full API key copied to clipboard!');
+  }
+
+  function copyToClipboard(text){
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text);
+    } else {
+      // Fallback for older browsers
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+    }
+  }
+
+  // Expose functions to window
+  window.loadAPIKeys = loadAPIKeys;
+  window.generateAPIKey = generateAPIKey;
+  window.revokeAPIKey = revokeAPIKey;
+  window.copyAPIKey = copyAPIKey;
     window.applyFilters=applyFilters; window.resetFilters=resetFilters; window.exportCurrentView=exportCurrentView;
     window.openAddModal=openAddModal; window.closeModal=closeModal;
     window.toggleStatus=toggleStatus; window.deleteItem=deleteItem;
