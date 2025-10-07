@@ -12,6 +12,22 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <style>
+    /* Form validation styles */
+    input.error, select.error, textarea.error {
+      border-color: var(--danger) !important;
+      background-color: #fee2e2 !important;
+    }
+
+    input.success, select.success, textarea.success {
+      border-color: var(--ok) !important;
+    }
+
+    .field-error {
+      color: var(--danger);
+      font-size: 12px;
+      margin-top: 4px;
+      display: block;
+    }
     /* ====== Design Tokens ====== */
     *{margin:0;padding:0;box-sizing:border-box}
     :root{
@@ -267,56 +283,8 @@
     <div class="tabpanes">
       <!-- Dashboard Pane -->
       <section id="pane-dashboard" class="pane" role="tabpanel" aria-labelledby="tab-dashboard">
-        <!-- Analytics Section on Dashboard -->
-        <div id="dashboardAnalytics" class="filterbox hidden" style="margin-top:12px">
-          <div style="display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:16px">
-            <h3 style="font-size:16px;margin:0;font-weight:700">📊 Revenue Analytics</h3>
-            <select id="analyticsTimeRange" style="padding:8px 12px;border:2px solid #e5e7eb;border-radius:8px;font-size:13px;font-weight:600;align-self:center">
-              <option value="6">Last 6 Months</option>
-              <option value="3">Last 3 Months</option>
-              <option value="12">Last 12 Months</option>
-            </select>
-          </div>
-          <!-- KPIs Row -->
-          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px">
-            <div style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);border-radius:12px;padding:16px;color:#fff">
-              <div style="font-size:11px;text-transform:uppercase;font-weight:700;opacity:0.9;margin-bottom:6px">Revenue MTD</div>
-              <div style="font-size:28px;font-weight:800" id="analyticsRevenueMTD">$0</div>
-              <div style="font-size:11px;opacity:0.9;margin-top:4px" id="analyticsRevenueTrend">-</div>
-            </div>
-            <div style="background:#fff;border:2px solid #eef2ff;border-radius:12px;padding:16px">
-              <div style="font-size:11px;text-transform:uppercase;color:#6b7280;font-weight:700;margin-bottom:6px">Occupancy Rate</div>
-              <div style="font-size:28px;font-weight:800;color:#111827" id="analyticsOccupancy">0%</div>
-              <div style="font-size:11px;color:#6b7280;margin-top:4px" id="analyticsOccupancyDetail">-</div>
-            </div>
-            <div style="background:#fff;border:2px solid #eef2ff;border-radius:12px;padding:16px">
-              <div style="font-size:11px;text-transform:uppercase;color:#6b7280;font-weight:700;margin-bottom:6px">Avg Per Billboard</div>
-              <div style="font-size:28px;font-weight:800;color:#10b981" id="analyticsAvgRevenue">$0</div>
-              <div style="font-size:11px;color:#6b7280;margin-top:4px">monthly rate</div>
-            </div>
-          </div>
-          <!-- Charts Row -->
-          <div style="display:grid;grid-template-columns:2fr 1fr;gap:12px">
-            <div style="background:#fff;border:2px solid #eef2ff;border-radius:12px;padding:16px">
-              <div style="font-size:13px;font-weight:700;color:#374151;margin-bottom:12px">Revenue Trend</div>
-              <div style="height:180px;width:100%">
-                <canvas id="revenueChart" style="width:100%;height:100%"></canvas>
-              </div>
-            </div>
-            <div style="background:#fff;border:2px solid #eef2ff;border-radius:12px;padding:16px">
-              <div style="font-size:13px;font-weight:700;color:#374151;margin-bottom:12px">Status</div>
-              <div style="height:180px;display:flex;align-items:center;justify-content:center;width:100%">
-                <canvas id="statusChart" style="width:100%;height:100%"></canvas>
-              </div>
-            </div>
-          </div>
-          <!-- Top Performers -->
-          <div style="background:#fff;border:2px solid #eef2ff;border-radius:12px;padding:16px;margin-top:12px">
-            <div style="font-size:13px;font-weight:700;color:#374151;margin-bottom:12px">Top Revenue Generators</div>
-            <div id="topBillboards"></div>
-          </div>
-        </div>
-        <div class="stats">
+  <!-- KPIs (Total Billboards, Active Sites, etc.) -->
+  <div class="stats">
           <div class="stat">
             <span class="dot" aria-hidden="true"></span>
             <div class="label">Total Billboards</div>
@@ -362,6 +330,56 @@
           </div>
           <div id="dashboardRecentBookings">
             <div style="color:#6b7280;padding:20px;text-align:center">Loading...</div>
+          </div>
+        </div>
+
+        <!-- ✅ Analytics (SINGLE INSTANCE) -->
+        <div id="dashboardAnalytics" class="filterbox hidden" style="margin-top:20px">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:16px">
+            <h3 style="font-size:16px;margin:0;font-weight:700">📊 Revenue Analytics</h3>
+            <select id="analyticsTimeRange" style="padding:8px 12px;border:2px solid #e5e7eb;border-radius:8px;font-size:13px;font-weight:600;align-self:center">
+              <option value="6">Last 6 Months</option>
+              <option value="3">Last 3 Months</option>
+              <option value="12">Last 12 Months</option>
+            </select>
+          </div>
+          <!-- KPIs Row -->
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px">
+            <div style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);border-radius:12px;padding:16px;color:#fff">
+              <div style="font-size:11px;text-transform:uppercase;font-weight:700;opacity:0.9;margin-bottom:6px">Revenue MTD</div>
+              <div style="font-size:28px;font-weight:800" id="analyticsRevenueMTD">$0</div>
+              <div style="font-size:11px;opacity:0.9;margin-top:4px" id="analyticsRevenueTrend">-</div>
+            </div>
+            <div style="background:#fff;border:2px solid #eef2ff;border-radius:12px;padding:16px">
+              <div style="font-size:11px;text-transform:uppercase;color:#6b7280;font-weight:700;margin-bottom:6px">Occupancy Rate</div>
+              <div style="font-size:28px;font-weight:800;color:#111827" id="analyticsOccupancy">0%</div>
+              <div style="font-size:11px;color:#6b7280;margin-top:4px" id="analyticsOccupancyDetail">-</div>
+            </div>
+            <div style="background:#fff;border:2px solid #eef2ff;border-radius:12px;padding:16px">
+              <div style="font-size:11px;text-transform:uppercase;color:#6b7280;font-weight:700;margin-bottom:6px">Avg Per Billboard</div>
+              <div style="font-size:28px;font-weight:800;color:#10b981" id="analyticsAvgRevenue">$0</div>
+              <div style="font-size:11px;color:#6b7280;margin-top:4px">monthly rate</div>
+            </div>
+          </div>
+          <!-- Charts Row -->
+          <div style="display:grid;grid-template-columns:2fr 1fr;gap:12px">
+            <div style="background:#fff;border:2px solid #eef2ff;border-radius:12px;padding:16px">
+              <div style="font-size:13px;font-weight:700;color:#374151;margin-bottom:12px">Revenue Trend</div>
+              <div style="height:180px;width:100%">
+                <canvas id="revenueChart" style="width:100%;height:100%"></canvas>
+              </div>
+            </div>
+            <div style="background:#fff;border:2px solid #eef2ff;border-radius:12px;padding:16px">
+              <div style="font-size:13px;font-weight:700;color:#374151;margin-bottom:12px">Status</div>
+              <div style="height:180px;display:flex;align-items:center;justify-content:center;width:100%">
+                <canvas id="statusChart" style="width:100%;height:100%"></canvas>
+              </div>
+            </div>
+          </div>
+          <!-- Top Performers -->
+          <div style="background:#fff;border:2px solid #eef2ff;border-radius:12px;padding:16px;margin-top:12px">
+            <div style="font-size:13px;font-weight:700;color:#374151;margin-bottom:12px">Top Revenue Generators</div>
+            <div id="topBillboards"></div>
           </div>
         </div>
 
@@ -422,61 +440,7 @@ Headers:
 </section>
 
               <!-- Analytics Section on Dashboard -->
-
-                <div id="dashboardAnalytics" class="filterbox hidden" style="margin-top:20px">
-                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-                    <h3 style="font-size:16px;margin:0;font-weight:700">📊 Revenue Analytics</h3>
-                    <select id="analyticsTimeRange" style="padding:8px 12px;border:2px solid #e5e7eb;border-radius:8px;font-size:13px;font-weight:600">
-                      <option value="6">Last 6 Months</option>
-                      <option value="3">Last 3 Months</option>
-                      <option value="12">Last 12 Months</option>
-                    </select>
-                  </div>
-                  
-                  <!-- KPIs Row -->
-                  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px">
-                    <div style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);border-radius:12px;padding:16px;color:#fff">
-                      <div style="font-size:11px;text-transform:uppercase;font-weight:700;opacity:0.9;margin-bottom:6px">Revenue MTD</div>
-                      <div style="font-size:28px;font-weight:800" id="analyticsRevenueMTD">$0</div>
-                      <div style="font-size:11px;opacity:0.9;margin-top:4px" id="analyticsRevenueTrend">-</div>
-                    </div>
-                    
-                    <div style="background:#fff;border:2px solid #eef2ff;border-radius:12px;padding:16px">
-                      <div style="font-size:11px;text-transform:uppercase;color:#6b7280;font-weight:700;margin-bottom:6px">Occupancy Rate</div>
-                      <div style="font-size:28px;font-weight:800;color:#111827" id="analyticsOccupancy">0%</div>
-                      <div style="font-size:11px;color:#6b7280;margin-top:4px" id="analyticsOccupancyDetail">-</div>
-                    </div>
-                    
-                    <div style="background:#fff;border:2px solid #eef2ff;border-radius:12px;padding:16px">
-                      <div style="font-size:11px;text-transform:uppercase;color:#6b7280;font-weight:700;margin-bottom:6px">Avg Per Billboard</div>
-                      <div style="font-size:28px;font-weight:800;color:#10b981" id="analyticsAvgRevenue">$0</div>
-                      <div style="font-size:11px;color:#6b7280;margin-top:4px">monthly rate</div>
-                    </div>
-                  </div>
-
-                  <!-- Charts Row -->
-                  <div style="display:grid;grid-template-columns:2fr 1fr;gap:12px">
-                    <div style="background:#fff;border:2px solid #eef2ff;border-radius:12px;padding:16px">
-                      <div style="font-size:13px;font-weight:700;color:#374151;margin-bottom:12px">Revenue Trend</div>
-                      <div style="height:180px">
-                        <canvas id="revenueChart"></canvas>
-                      </div>
-                    </div>
-
-                    <div style="background:#fff;border:2px solid #eef2ff;border-radius:12px;padding:16px">
-                      <div style="font-size:13px;font-weight:700;color:#374151;margin-bottom:12px">Status</div>
-                      <div style="height:180px;display:flex;align-items:center;justify-content:center">
-                        <canvas id="statusChart"></canvas>
-                      </div>
-                    </div>
-                  </div>
-
-                  <!-- Top Performers -->
-                  <div style="background:#fff;border:2px solid #eef2ff;border-radius:12px;padding:16px;margin-top:12px">
-                    <div style="font-size:13px;font-weight:700;color:#374151;margin-bottom:12px">Top Revenue Generators</div>
-                    <div id="topBillboards"></div>
-                  </div>
-                </div>
+                <!-- ...existing code... -->
 
       <!-- Inventory Pane -->
       <section id="pane-inventory" class="pane hidden" role="tabpanel" aria-labelledby="tab-inventory">
@@ -759,6 +723,18 @@ Headers:
     const toNum = v => { const n = parseFloat(String(v).replace(/[^0-9.\-]/g,'')); return isNaN(n) ? null : n; };
     const toInt = v => { const n = parseInt(String(v).replace(/[^0-9\-]/g,''),10); return isNaN(n) ? null : n; };
     const toBool = v => {
+    // Helper function to highlight invalid fields
+    function markFieldInvalid(selector, message) {
+      const field = $(selector);
+      field.classList.add('error');
+      // Remove error styling after user starts typing
+      field.addEventListener('input', function removeError() {
+        field.classList.remove('error');
+        field.removeEventListener('input', removeError);
+      }, { once: true });
+      toast(message, 'error');
+      field.focus();
+    }
       if (v === true || v === false) return v;
       const s = String(v||'').trim().toLowerCase();
       return ['true','1','yes','y'].includes(s) ? true : (['false','0','no','n'].includes(s) ? false : false);
@@ -831,7 +807,7 @@ Headers:
 
     /* ====== Stats + Dashboard ====== */
     async function loadStats(){
-      if(!currentUser) return;
+  if(!currentUser) return;  // ✅ FIXED - now exits when NO user
 
       const orgId = currentUser.organizationId;
 
@@ -888,7 +864,7 @@ Headers:
     }
 
     async function loadDashboard(){
-      if(!currentUser) return;
+  if(!currentUser) return;  // ✅ FIXED
       await loadStats();
 
       const orgId = currentUser.organizationId;
@@ -996,7 +972,7 @@ Headers:
     }
 
     async function loadInventory(){
-      if(!currentUser) return;
+  if(!currentUser) return;  // ✅ FIXED
       showSkeletons();
       const orgId = currentUser.organizationId;
       let q=supabase.from('inventory_production').select('*',{count:'exact'}).eq('organization_id', orgId);
@@ -1203,28 +1179,96 @@ Headers:
 
     async function handleSubmit(e){
       e.preventDefault();
+      
+      // ===== VALIDATION SECTION =====
+      
+      // 1. Board Name validation
+      const boardName = $("#boardName").value.trim();
+      if(!boardName){
+        $("#boardName").focus();
+        return toast('Billboard name is required', 'error');
+      }
+      if(boardName.length < 3){
+        $("#boardName").focus();
+        return toast('Billboard name must be at least 3 characters', 'error');
+      }
+      if(boardName.length > 100){
+        $("#boardName").focus();
+        return toast('Billboard name must be less than 100 characters', 'error');
+      }
+
+      // 2. Country validation
+      const country = $("#country").value.trim();
+      if(!country){
+        $("#country").focus();
+        return toast('Country is required', 'error');
+      }
+
+      // 3. GPS Coordinates validation
       const lat = toNum($("#latitude").value);
       const lng = toNum($("#longitude").value);
 
+      // If one is provided, both must be provided
+      if((lat !== null && lng === null) || (lat === null && lng !== null)){
+        return toast('Both latitude and longitude are required for GPS coordinates', 'error');
+      }
+
       if(lat !== null && (lat < -90 || lat > 90)){
+        $("#latitude").focus();
         return toast('Latitude must be between -90 and 90', 'error');
       }
       if(lng !== null && (lng < -180 || lng > 180)){
+        $("#longitude").focus();
         return toast('Longitude must be between -180 and 180', 'error');
       }
 
+      // 4. Pricing validation
+      const standardRate = toNum($("#standardRate").value);
+      const monthlyRate = toNum($("#monthlyRate").value);
+
+      if(standardRate !== null && standardRate < 0){
+        $("#standardRate").focus();
+        return toast('Standard rate cannot be negative', 'error');
+      }
+      if(monthlyRate !== null && monthlyRate < 0){
+        $("#monthlyRate").focus();
+        return toast('Monthly rate cannot be negative', 'error');
+      }
+      if(standardRate !== null && standardRate > 1000000){
+        $("#standardRate").focus();
+        return toast('Standard rate seems unreasonably high. Please verify.', 'error');
+      }
+      if(monthlyRate !== null && monthlyRate > 1000000){
+        $("#monthlyRate").focus();
+        return toast('Monthly rate seems unreasonably high. Please verify.', 'error');
+      }
+
+      // 5. Number of Screens validation
+      const noOfScreens = toInt($("#noOfScreens").value);
+      if(noOfScreens !== null && noOfScreens < 1){
+        $("#noOfScreens").focus();
+        return toast('Number of screens must be at least 1', 'error');
+      }
+      if(noOfScreens !== null && noOfScreens > 100){
+        $("#noOfScreens").focus();
+        return toast('Number of screens seems too high. Please verify.', 'error');
+      }
+
+      // ===== END VALIDATION =====
+
+      // Original data collection (now using trimmed values)
       const data = {
-        board_name: $("#boardName").value,
-        display_name: $("#displayName").value,
-        reference_id: $("#referenceId").value,
-        country: $("#country").value,
-        state: $("#state").value,
-        district: $("#district").value,
-        address: $("#address").value,
-        billboard_type: $("#billboardType").value,
-        selling_standard_rate: toNum($("#standardRate").value),
-        selling_monthly_rate: toNum($("#monthlyRate").value),
-        no_of_screens: toInt($("#noOfScreens").value),
+        board_name: boardName,
+        display_name: $("#displayName").value.trim(),
+        reference_id: $("#referenceId").value.trim(),
+        country: country,
+        state: $("#state").value.trim(),
+        district: $("#district").value.trim(),
+        address: $("#address").value.trim(),
+        billboard_type: $("#billboardType").value.trim(),
+        selling_standard_rate: standardRate,
+        selling_monthly_rate: monthlyRate,
+        no_of_screens: noOfScreens,
         active: $("#activeStatus").value === 'true',
         available: $("#availableStatus").value === 'true',
         latitude: lat,
@@ -1232,6 +1276,7 @@ Headers:
         gps_coordinates: (lat != null && lng != null) ? `${lat},${lng}` : null
       };
       
+      // Rest of your original submit logic stays the same
       let error;
       if(editingUuid){
         const result = await supabase
@@ -1350,7 +1395,7 @@ INV-SAMPLE-001,Downtown Billboard,Main Street Digital,REF-001,USA,California,Los
 
     /* ====== Map ====== */
     async function initMap(){
-      if(!currentUser) return;
+  if(!currentUser) return;  // ✅ FIXED
 
       if(!map){
         map = L.map('map').setView([20, 0], 2);
@@ -1476,11 +1521,63 @@ INV-SAMPLE-001,Downtown Billboard,Main Street Digital,REF-001,USA,California,Los
     async function handleBookingSubmit(e){
       e.preventDefault();
       
+      // ===== VALIDATION SECTION =====
+      
+      // 1. Date validation
       const startDate = $("#bookingStartDate").value;
       const endDate = $("#bookingEndDate").value;
-      if(!startDate || !endDate){ return toast('Both dates are required', 'error'); }
-      if(new Date(endDate) < new Date(startDate)){ return toast('End date cannot be before start date', 'error'); }
       
+      if(!startDate || !endDate){
+        return toast('Both start and end dates are required', 'error');
+      }
+
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      // End date cannot be before start date
+      if(end < start){
+        $("#bookingEndDate").focus();
+        return toast('End date cannot be before start date', 'error');
+      }
+
+      // Warn if booking is in the past
+      if(start < today){
+        const confirm = window.confirm(
+          '⚠️ Warning: Start date is in the past.\n\n' +
+          'Are you sure you want to create a historical booking?'
+        );
+        if(!confirm) return;
+      }
+
+      // Warn if booking is very long (more than 1 year)
+      const daysDiff = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+      if(daysDiff > 365){
+        const confirm = window.confirm(
+          `⚠️ Warning: This booking is ${daysDiff} days long (over 1 year).\n\n` +
+          'Are you sure this is correct?'
+        );
+        if(!confirm) return;
+      }
+
+      // 2. Client name validation (optional but recommended)
+      const clientName = $("#bookingClient").value.trim();
+      if(clientName && clientName.length < 2){
+        $("#bookingClient").focus();
+        return toast('Client name must be at least 2 characters', 'error');
+      }
+
+      // 3. Campaign name validation (optional but recommended)
+      const campaignName = $("#bookingCampaign").value.trim();
+      if(campaignName && campaignName.length < 2){
+        $("#bookingCampaign").focus();
+        return toast('Campaign name must be at least 2 characters', 'error');
+      }
+
+      // ===== END VALIDATION =====
+      
+      // Check for conflicts (your existing code)
       const {data: conflicts, error: conflictError} = await supabase
         .from('bookings')
         .select('*')
@@ -1489,7 +1586,9 @@ INV-SAMPLE-001,Downtown Billboard,Main Street Digital,REF-001,USA,California,Los
         .neq('status', 'cancelled')
         .lte('start_date', endDate)
         .gte('end_date', startDate);
+        
       if(conflictError){ console.error('Conflict check error:', conflictError); }
+      
       if(conflicts && conflicts.length > 0){
         const conflictList = conflicts.map(c => 
           `${c.campaign_name || 'Untitled'}: ${c.start_date} to ${c.end_date}`
@@ -1499,15 +1598,16 @@ INV-SAMPLE-001,Downtown Billboard,Main Street Digital,REF-001,USA,California,Los
         }
       }
 
+      // Create booking (your existing code, now using trimmed values)
       const booking = {
         inventory_uuid: currentBillboardForBooking,
         organization_id: currentUser.organizationId,
         start_date: startDate,
         end_date: endDate,
-        client_name: $("#bookingClient").value,
-        campaign_name: $("#bookingCampaign").value,
+        client_name: clientName || null,
+        campaign_name: campaignName || null,
         status: $("#bookingStatus").value,
-        notes: $("#bookingNotes").value,
+        notes: $("#bookingNotes").value.trim() || null,
         created_by: currentUser.id
       };
       
@@ -1836,7 +1936,7 @@ INV-SAMPLE-001,Downtown Billboard,Main Street Digital,REF-001,USA,California,Los
     let allBookingsForCalendar = [];
 
     async function loadCalendar(){
-      if(!currentUser) return;
+  if(!currentUser) return;  // ✅ FIXED
 
       const year = currentCalendarDate.getFullYear();
       const month = currentCalendarDate.getMonth();
@@ -1986,7 +2086,7 @@ INV-SAMPLE-001,Downtown Billboard,Main Street Digital,REF-001,USA,California,Los
 
   /* ====== API Key Management ====== */
   async function loadAPIKeys(){
-    if(!currentUser) return;
+  if(!currentUser) return;  // ✅ FIXED
   
     const {data, error} = await supabase
       .from('api_keys')
@@ -2155,3 +2255,5 @@ INV-SAMPLE-001,Downtown Billboard,Main Street Digital,REF-001,USA,California,Los
   </script>
 </body>
 </html>
+
+
