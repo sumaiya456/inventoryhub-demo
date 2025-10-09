@@ -622,13 +622,13 @@ Headers:
   </div>
 
   <!-- ====== Add/Edit Modal ====== -->
-  <div id="addModal" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:900;padding:16px">
-    <div class="pane" style="max-width:640px;width:100%;background:#fff;border-radius:14px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+  <div id="addModal" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:900;padding:16px;overflow-y:auto">
+    <div class="pane" style="max-width:640px;width:100%;background:#fff;border-radius:14px;max-height:90vh;overflow-y:auto;margin:auto">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;position:sticky;top:0;background:#fff;padding-bottom:10px;z-index:1;border-bottom:1px solid #e5e7eb">
         <h2 id="modalTitle">Add New Site</h2>
         <button class="btn btn-secondary btn-sm" onclick="closeModal()">Close</button>
       </div>
-      <form onsubmit="handleSubmit(event)">
+      <form onsubmit="handleSubmit(event)" style="padding-top:10px">
         <div class="form-group"><label for="boardName">Board Name *</label><input id="boardName" required></div>
         <div class="form-group"><label for="displayName">Display Name</label><input id="displayName"></div>
         <div class="form-group"><label for="referenceId">Reference ID</label><input id="referenceId"></div>
@@ -1339,57 +1339,98 @@ INV-SAMPLE-001,Downtown Billboard,Main Street Digital,REF-001,USA,California,Los
       Papa.parse(file, {
         header: true,
         skipEmptyLines: true,
-        transformHeader: h => String(h||'').trim(),
+        transformHeader: h => String(h||'').trim().toLowerCase().replace(/\s+/g, '_'),
         complete: async function(results){
           if (!results || !Array.isArray(results.data)) { toast('CSV parse failed','error'); return; }
 
-          const rows = results.data;
+          const rows = results.data.filter(row => {
+            // Filter out completely empty rows
+            return Object.values(row).some(val => val && String(val).trim() !== '');
+          });
+
+          if(!rows.length) return toast('No valid rows detected. Please check your CSV file.','error');
 
           const items = rows.map((row, i) => {
-            const r = (k) => row[k] ?? '';
-            return {
-              inventory_uuid: r('inventory_uuid') || ('INV-' + Date.now() + '-' + i),
-              organization_id: currentUser.organizationId,
-              board_name: r('board_name') || '',
-              display_name: r('display_name') || r('board_name') || '',
-              reference_id: r('reference_id') || '',
-              country: r('country') || '',
-              state: r('state') || '',
-              district: r('district') || '',
-              address: r('address') || '',
-              latitude: toNum(r('latitude')),
-              longitude: toNum(r('longitude')),
-              gps_coordinates: r('gps_coordinates') || '',
-              media_owner: r('media_owner') || '',
-              active: toBool(r('active')),
-              available: toBool(r('available')),
-              billboard_type: r('billboard_type') || '',
-              board_format: r('board_format') || '',
-              images: r('images') || '',
-              selling_standard_rate: toNum(r('selling_standard_rate')),
-              selling_monthly_rate: toNum(r('selling_monthly_rate')),
-              no_of_screens: toInt(r('no_of_screens')),
-              resolution: r('resolution') || '',
-              programmatic_enabled: r('programmatic_enabled') || 'No',
-              exposure_to_dsp: r('exposure_to_dsp') || 'No'
+            const r = (k) => {
+              // Try both original case and lowercase versions
+              return row[k] || row[k.toLowerCase()] || row[k.replace(/_/g, ' ')] || '';
             };
-          }).filter(x => x.board_name || x.display_name || x.address);
+            
+            const boardName = r('board_name') || r('Board Name') || '';
+            const displayName = r('display_name') || r('Display Name') || boardName;
+            
+            // Skip if no meaningful data
+            if(!boardName && !displayName && !r('address')) return null;
+            
+            return {
+              inventory_uuid: r('inventory_uuid') || ('INV-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9)),
+              organization_id: currentUser.organizationId,
+              board_name: boardName,
+              display_name: displayName,
+              reference_id: r('reference_id') || r('Reference ID') || '',
+              country: r('country') || r('Country') || '',
+              state: r('state') || r('State') || '',
+              district: r('district') || r('District') || '',
+              address: r('address') || r('Address') || '',
+              latitude: toNum(r('latitude') || r('Latitude')),
+              longitude: toNum(r('longitude') || r('Longitude')),
+              gps_coordinates: r('gps_coordinates') || r('GPS Coordinates') || '',
+              media_owner: r('media_owner') || r('Media Owner') || '',
+              active: toBool(r('active') || r('Active')),
+              available: toBool(r('available') || r('Available')),
+              billboard_type: r('billboard_type') || r('Billboard Type') || r('Type') || '',
+              board_format: r('board_format') || r('Board Format') || '',
+              images: r('images') || r('Images') || '',
+              selling_standard_rate: toNum(r('selling_standard_rate') || r('Standard Rate') || r('selling standard rate')),
+              selling_monthly_rate: toNum(r('selling_monthly_rate') || r('Monthly Rate') || r('selling monthly rate')),
+              no_of_screens: toInt(r('no_of_screens') || r('Screens') || r('no of screens')),
+              resolution: r('resolution') || r('Resolution') || '',
+              programmatic_enabled: r('programmatic_enabled') || r('Programmatic Enabled') || 'No',
+              exposure_to_dsp: r('exposure_to_dsp') || r('Exposure to DSP') || 'No'
+            };
+          }).filter(x => x !== null);
 
-          if(!items.length) return toast('No valid rows','error');
-          if(!confirm(`Upload ${items.length} items?`)) return;
+          if(!items.length) return toast('No valid rows with required data (board_name or address required)','error');
+          
+          const confirmMsg = `Found ${items.length} valid billboard(s) to upload.\n\nNote: Existing billboards with same UUID will be skipped.\n\nContinue?`;
+          if(!confirm(confirmMsg)) return;
 
-          let uploaded=0; const batch=100;
+          showLoading();
+          let uploaded=0, skipped=0; const batch=50;
+          
           for(let i=0;i<items.length;i+=batch){
-            const {error}=await supabase.from('inventory_production').insert(items.slice(i,i+batch));
-            if(error){ toast(error.message,'error'); break; }
-            uploaded+=Math.min(batch, items.length-i);
+            const chunk = items.slice(i,i+batch);
+            const {data, error}=await supabase.from('inventory_production').insert(chunk).select();
+            
+            if(error){
+              // Check if it's a duplicate key error
+              if(error.message.includes('duplicate') || error.code === '23505'){
+                skipped += chunk.length;
+                console.log('Skipped duplicate entries:', chunk.length);
+              } else {
+                hideLoading();
+                toast('Upload error: '+error.message,'error'); 
+                break;
+              }
+            } else {
+              uploaded += (data?.length || chunk.length);
+            }
           }
-          toast(`Uploaded ${uploaded}`);
+          
+          hideLoading();
+          
+          if(uploaded > 0 || skipped > 0){
+            const msg = uploaded > 0 
+              ? `✅ Uploaded ${uploaded} billboard(s)${skipped > 0 ? `, skipped ${skipped} duplicate(s)` : ''}`
+              : `⚠️ All ${skipped} billboard(s) already exist (duplicates skipped)`;
+            toast(msg);
+          }
+          
           $("#csvFile").value='';
           await loadDashboard();
           await loadInventory();
         },
-        error: function(err){ toast('CSV error: '+err.message,'error'); }
+        error: function(err){ toast('CSV error: '+err.message,'error'); hideLoading(); }
       });
     }
 
